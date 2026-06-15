@@ -17,7 +17,7 @@ pragma solidity ^0.8.20;
  */
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -39,7 +39,7 @@ interface IGroupRegistry {
 contract TreasuryV2 is
     Initializable,
     AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable,
+    ReentrancyGuard,
     PausableUpgradeable,
     UUPSUpgradeable
 {
@@ -133,9 +133,9 @@ contract TreasuryV2 is
         address _groupRegistry
     ) external initializer {
         __AccessControl_init();
-        __ReentrancyGuard_init();
+        
         __Pausable_init();
-        __UUPSUpgradeable_init();
+
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);

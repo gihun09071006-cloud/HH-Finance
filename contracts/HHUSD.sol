@@ -38,7 +38,7 @@ contract HHUSD is
     function initialize(address admin) external initializer {
         __ERC20_init("HH USD", "HHUSD");
         __AccessControl_init();
-        __UUPSUpgradeable_init();
+
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(UPGRADER_ROLE, admin);

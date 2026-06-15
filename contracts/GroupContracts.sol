@@ -58,7 +58,7 @@ contract PublicGroupFactory is
     ) external initializer {
         __AccessControl_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
+
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
@@ -358,7 +358,7 @@ contract PrivateGroupFactory is
     ) external initializer {
         __AccessControl_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
+
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
