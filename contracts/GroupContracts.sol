@@ -68,11 +68,11 @@ contract PublicGroupFactory is
         vault = _vault;
         nextGroupId = 1;
 
-        // Default templates
-        templates.push(GroupTemplate(10e18,  10, 7 days, 10000));
-        templates.push(GroupTemplate(20e18,  10, 7 days, 10000));
-        templates.push(GroupTemplate(50e18,  10, 7 days, 10000));
-        templates.push(GroupTemplate(100e18, 10, 7 days, 10000));
+        // Default templates (collateralRatioBP 14000 = 140%)
+        templates.push(GroupTemplate(10e18,  10, 7 days, 14000));
+        templates.push(GroupTemplate(20e18,  10, 7 days, 14000));
+        templates.push(GroupTemplate(50e18,  10, 7 days, 14000));
+        templates.push(GroupTemplate(100e18, 10, 7 days, 14000));
     }
 
     /**
