@@ -59,7 +59,8 @@ contract AutoGroup is ReentrancyGuard {
 
     uint256 public immutable groupId;
     uint256 public immutable contributionAmount;
-    uint256 public immutable totalCycles;
+    uint256 public immutable maxCycles;          // 최대 인원(28) 기준 초기값
+    uint256 public            totalCycles;       // 실제 시작 인원 확정 시 업데이트
     uint256 public immutable cycleIntervalSeconds;
     uint256 public immutable collateralRatioBP;
 
@@ -103,6 +104,7 @@ contract AutoGroup is ReentrancyGuard {
     event PositionSelected(address indexed user, uint8 position);
     event PositionAutoAssigned(address indexed user, uint8 position, uint256 joinOrder);
     event GroupStarted(uint256 startTime, uint256 memberCount);
+    event ExcessCollateralRefunded(address indexed user, uint256 refundAmount, uint256 newTotalCycles);
     event ContributionMade(address indexed user, uint256 cycle, uint256 amount);
     event PayoutDistributed(address indexed recipient, uint256 cycle, uint256 amount);
     event PaymentWarned(address indexed user, uint256 cycle);
@@ -162,7 +164,8 @@ contract AutoGroup is ReentrancyGuard {
 
         groupId              = _groupId;
         contributionAmount   = _contributionAmount;
-        totalCycles          = _totalCycles;
+        maxCycles            = _totalCycles;
+        totalCycles          = _totalCycles;  // 그룹 시작 시 실제 인원으로 업데이트됨
         cycleIntervalSeconds = _cycleIntervalSeconds;
         collateralRatioBP    = _collateralRatioBP;
         vault                = ICollateralVault(_vault);
@@ -450,10 +453,30 @@ contract AutoGroup is ReentrancyGuard {
     }
 
     function _startGroup() internal {
+        uint256 actualCount = memberList.length;
+
+        // 실제 인원으로 사이클 수 확정
+        if (actualCount < totalCycles) {
+            uint256 initialRequired = (contributionAmount * maxCycles    * collateralRatioBP) / 10000;
+            uint256 actualRequired  = (contributionAmount * actualCount  * collateralRatioBP) / 10000;
+            uint256 refund          = initialRequired - actualRequired;
+
+            if (refund > 0) {
+                for (uint256 i = 0; i < actualCount; i++) {
+                    address m = memberList[i];
+                    try vault.unlockCollateral(m, groupId, refund) {
+                        emit ExcessCollateralRefunded(m, refund, actualCount);
+                    } catch {}
+                }
+            }
+
+            totalCycles = actualCount;
+        }
+
         state          = GroupState.ACTIVE;
         currentCycle   = 1;
         cycleStartTime = block.timestamp;
-        emit GroupStarted(block.timestamp, memberList.length);
+        emit GroupStarted(block.timestamp, actualCount);
     }
 
     function _completeGroup() internal {
