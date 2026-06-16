@@ -78,4 +78,5 @@ module.exports = {
     artifacts: "./artifacts",
   },
   mocha: { timeout: 60000 },
+  sourcify: { enabled: false },
 };
