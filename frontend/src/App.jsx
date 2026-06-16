@@ -213,7 +213,14 @@ function AppInner() {
   // ── 유틸 ─────────────────────────────────────────────────────────────────
   const mintHHUSD = async (amount) => {
     if (!contracts) return;
-    await onTx(() => contracts.usdt.mint(account, ethers.parseEther(String(amount))));
+    try {
+      // MockUSDT mint 시도 (로컬넷: deployer 권한 있음)
+      await onTx(() => contracts.usdt.mint(account, ethers.parseEther(String(amount))));
+    } catch (e) {
+      // BSC 테스트넷: MockUSDT mint 권한 없음 → HHUSD 직접 deposit으로 대체 안내
+      setError("테스트넷에서는 MockUSDT faucet이 없습니다. BscScan에서 직접 mint() 호출 필요: " + (ADDR.MockUSDT));
+      return;
+    }
     await refreshBalances();
   };
 

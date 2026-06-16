@@ -67,22 +67,20 @@ export default function DashboardTab({
         <Card title={t("my_rooms_count")} value={allMyGroups.length + t("rooms_unit")} color="#C8A8F7" />
       </div>
 
-      {ADDRESSES.network === "hardhat" && (
-        <div style={s.section}>
-          <div style={s.sectionTitle}>🧪 {t("test_mint_title")}</div>
-          <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={() => mintHHUSD(1000)} disabled={loading} style={s.btn}>
-              {t("mint_1000")}
-            </button>
-            <button onClick={() => mintHHUSD(5000)} disabled={loading} style={s.btn}>
-              {t("mint_5000")}
-            </button>
-          </div>
-          <div style={{ color: "#555", fontSize: 12, marginTop: 8 }}>
-            {t("test_mint_note")}
-          </div>
+      <div style={s.section}>
+        <div style={s.sectionTitle}>🧪 {t("test_mint_title")}</div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button onClick={() => mintHHUSD(1000)} disabled={loading} style={s.btn}>
+            {t("mint_1000")}
+          </button>
+          <button onClick={() => mintHHUSD(5000)} disabled={loading} style={s.btn}>
+            {t("mint_5000")}
+          </button>
         </div>
-      )}
+        <div style={{ color: "#555", fontSize: 12, marginTop: 8 }}>
+          {t("test_mint_note")}
+        </div>
+      </div>
 
       <div style={s.section}>
         <div style={s.sectionTitle}>{t("my_rooms_section")}</div>
