@@ -118,6 +118,7 @@ async function main() {
   console.log("[8/9] AutoGroupFactory 배포...");
   const autoFactory = await ethers.deployContract("AutoGroupFactory", [
     await vault.getAddress(),
+    await hhusd.getAddress(),
     devWalletAddr,
     eventWalletAddr,
     deployer.address,
@@ -129,6 +130,7 @@ async function main() {
   console.log("[9/9] CustomGroupFactory 배포...");
   const customFactory = await ethers.deployContract("CustomGroupFactory", [
     await vault.getAddress(),
+    await hhusd.getAddress(),
     devWalletAddr,
     eventWalletAddr,
     deployer.address,
@@ -145,6 +147,7 @@ async function main() {
   const PAYOUT_ROLE = await treasury.PAYOUT_EXECUTOR_ROLE();
   const DEFAULT_ADMIN = await vault.DEFAULT_ADMIN_ROLE();
 
+  const HHUSD_ADMIN = await hhusd.DEFAULT_ADMIN_ROLE();
   await (await hhusd.grantRole(MINTER, await treasury.getAddress())).wait();
   await (await hhusd.grantRole(MINTER, await vault.getAddress())).wait();
   await (await hhusd.grantRole(BURNER, await treasury.getAddress())).wait();
@@ -152,6 +155,9 @@ async function main() {
   await (await vault.grantRole(GROUP_ROLE, await group.getAddress())).wait();
   await (await vault.grantRole(DEFAULT_ADMIN, await autoFactory.getAddress())).wait();
   await (await vault.grantRole(DEFAULT_ADMIN, await customFactory.getAddress())).wait();
+  // factories가 새 그룹 컨트랙트에 MINTER/BURNER를 부여할 수 있도록 HHUSD admin 권한 부여
+  await (await hhusd.grantRole(HHUSD_ADMIN, await autoFactory.getAddress())).wait();
+  await (await hhusd.grantRole(HHUSD_ADMIN, await customFactory.getAddress())).wait();
   await (await registry.grantRole(REGISTRAR, deployer.address)).wait();
   await (await treasury.grantRole(PAYOUT_ROLE, await group.getAddress())).wait();
   await (await registry.registerGroup(1n, await group.getAddress(), ethers.parseEther("100"), 10n)).wait();

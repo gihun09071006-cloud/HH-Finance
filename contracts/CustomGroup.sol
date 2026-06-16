@@ -11,6 +11,11 @@ interface ICollateralVault {
     function getGroupCollateral(uint256 groupId, address user) external view returns (uint256);
 }
 
+interface IHHUSD {
+    function burn(address user, uint256 amount) external;
+    function mint(address to, uint256 amount) external;
+}
+
 /**
  * @title CustomGroup
  * @notice 커스텀 계모임 방 — 계장(방장)이 파라미터를 직접 설정
@@ -64,8 +69,11 @@ contract CustomGroup is ReentrancyGuard {
     uint256 public immutable maxMembers;
     uint256 public immutable cycleIntervalSeconds;
     uint256 public immutable collateralRatioBP;
+    uint256 public immutable interestBP;        // 이자율 (예: 500 = 5%)
+    uint256 public immutable interestAmount;    // 사이클당 이자액
 
     ICollateralVault public immutable vault;
+    IHHUSD           public immutable hhusd;
     address          public immutable organizer;   // 계장
     address          public immutable devWallet;
     address          public immutable eventWallet;
@@ -169,14 +177,17 @@ contract CustomGroup is ReentrancyGuard {
         uint256 _maxMembers,
         uint256 _cycleIntervalSecs,
         uint256 _collateralRatioBP,
+        uint256 _interestBP,
         uint256 _enrollmentDuration,
         address _vault,
+        address _hhusd,
         address _organizer,
         address _devWallet,
         address _eventWallet,
         address _factory
     ) {
         require(_vault       != address(0), "vault required");
+        require(_hhusd       != address(0), "hhusd required");
         require(_organizer   != address(0), "organizer required");
         require(_devWallet   != address(0), "devWallet required");
         require(_eventWallet != address(0), "eventWallet required");
@@ -189,10 +200,13 @@ contract CustomGroup is ReentrancyGuard {
         groupId              = _groupId;
         contributionAmount   = _contributionAmount;
         maxMembers           = _maxMembers;
-        totalCycles          = _maxMembers;  // 사이클 수 = 최대 인원수
+        totalCycles          = _maxMembers;
         cycleIntervalSeconds = _cycleIntervalSecs;
         collateralRatioBP    = _collateralRatioBP;
+        interestBP           = _interestBP;
+        interestAmount       = _contributionAmount * _interestBP / 10000;
         vault                = ICollateralVault(_vault);
+        hhusd                = IHHUSD(_hhusd);
         organizer            = _organizer;
         devWallet            = _devWallet;
         eventWallet          = _eventWallet;
@@ -363,7 +377,11 @@ contract CustomGroup is ReentrancyGuard {
     function contribute() external nonReentrant inState(GroupState.ACTIVE) {
         Member storage m = members[msg.sender];
         if (m.wallet == address(0) || m.status == MemberStatus.REMOVED) revert NotMember();
-        emit ContributionMade(msg.sender, currentCycle, contributionAmount);
+        uint256 amount = m.hasReceivedPayout
+            ? contributionAmount + interestAmount
+            : contributionAmount;
+        hhusd.burn(msg.sender, amount);
+        emit ContributionMade(msg.sender, currentCycle, amount);
     }
 
     function distributePayout() external nonReentrant inState(GroupState.ACTIVE) {
@@ -373,8 +391,11 @@ contract CustomGroup is ReentrancyGuard {
         address recipient = positionToMember[uint8(currentCycle)];
         require(recipient != address(0), "No recipient for cycle");
 
-        uint256 payout = contributionAmount * memberList.length;
+        // 수령액 = N × C + (currentCycle - 1) × I
+        uint256 payout = contributionAmount * memberList.length
+            + (currentCycle - 1) * interestAmount;
         members[recipient].hasReceivedPayout = true;
+        hhusd.mint(recipient, payout);
         emit PayoutDistributed(recipient, currentCycle, payout);
 
         if (currentCycle == totalCycles) {
@@ -395,13 +416,16 @@ contract CustomGroup is ReentrancyGuard {
 
         address cycleRecipient = positionToMember[uint8(currentCycle)];
         uint256 available = vault.getGroupCollateral(groupId, user);
+        uint256 dueAmount = m.hasReceivedPayout
+            ? contributionAmount + interestAmount
+            : contributionAmount;
 
-        if (available >= contributionAmount) {
-            vault.slashCollateral(user, groupId, contributionAmount, cycleRecipient);
+        if (available >= dueAmount) {
+            vault.slashCollateral(user, groupId, dueAmount, cycleRecipient);
             m.missedPayments++;
             m.status = m.missedPayments == 1 ? MemberStatus.WARNED : MemberStatus.PENALIZED;
             if (m.missedPayments == 1) emit PaymentWarned(user, currentCycle);
-            emit CollateralDeducted(user, currentCycle, contributionAmount);
+            emit CollateralDeducted(user, currentCycle, dueAmount);
 
             uint256 remaining = vault.getGroupCollateral(groupId, user);
             if (uint256(m.missedPayments) * 10000 >= totalCycles * SLASH_THRESHOLD_BP) {

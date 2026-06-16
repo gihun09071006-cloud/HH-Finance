@@ -10,6 +10,12 @@ interface ICollateralVaultRole {
     function GROUP_ROLE() external view returns (bytes32);
 }
 
+interface IHHUSDRoles {
+    function grantRole(bytes32 role, address account) external;
+    function MINTER_ROLE() external view returns (bytes32);
+    function BURNER_ROLE() external view returns (bytes32);
+}
+
 /**
  * @title CustomGroupFactory
  * @notice 커스텀 계모임 방 생성 / 관리
@@ -29,10 +35,12 @@ contract CustomGroupFactory is ReentrancyGuard, AccessControl {
     // ─── 고정 설정 ───────────────────────────────────────────────────────────
 
     uint256 public constant COLLATERAL_BP = 14000;  // 140% 고정
+    uint256 public constant INTEREST_BP   = 500;    // 5% 이자율
 
     // ─── 핵심 주소 ───────────────────────────────────────────────────────────
 
     address public immutable vault;
+    address public immutable hhusd;
     address public immutable devWallet;
     address public immutable eventWallet;
 
@@ -81,16 +89,19 @@ contract CustomGroupFactory is ReentrancyGuard, AccessControl {
 
     constructor(
         address _vault,
+        address _hhusd,
         address _devWallet,
         address _eventWallet,
         address _admin
     ) {
         require(_vault       != address(0), "vault required");
+        require(_hhusd       != address(0), "hhusd required");
         require(_devWallet   != address(0), "devWallet required");
         require(_eventWallet != address(0), "eventWallet required");
         require(_admin       != address(0), "admin required");
 
         vault        = _vault;
+        hhusd        = _hhusd;
         devWallet    = _devWallet;
         eventWallet  = _eventWallet;
         nextGroupId  = 1;
@@ -130,8 +141,10 @@ contract CustomGroupFactory is ReentrancyGuard, AccessControl {
             maxMembers,
             cycleIntervalSecs,
             COLLATERAL_BP,
+            INTEREST_BP,
             enrollmentDuration,
             vault,
+            hhusd,
             msg.sender,   // organizer = 계장
             devWallet,
             eventWallet,
@@ -144,6 +157,9 @@ contract CustomGroupFactory is ReentrancyGuard, AccessControl {
             ICollateralVaultRole(vault).GROUP_ROLE(),
             groupAddr
         );
+        // HHUSD에 MINTER_ROLE + BURNER_ROLE 부여
+        IHHUSDRoles(hhusd).grantRole(IHHUSDRoles(hhusd).MINTER_ROLE(), groupAddr);
+        IHHUSDRoles(hhusd).grantRole(IHHUSDRoles(hhusd).BURNER_ROLE(), groupAddr);
 
         allGroups.push(groupAddr);
         isKnownGroup[groupAddr] = true;

@@ -10,6 +10,12 @@ interface ICollateralVaultRole {
     function GROUP_ROLE() external view returns (bytes32);
 }
 
+interface IHHUSDRoles {
+    function grantRole(bytes32 role, address account) external;
+    function MINTER_ROLE() external view returns (bytes32);
+    function BURNER_ROLE() external view returns (bytes32);
+}
+
 /**
  * @title AutoGroupFactory
  * @notice 기여금 티어별 자동 계모임 방 생성 / 관리
@@ -39,6 +45,7 @@ contract AutoGroupFactory is ReentrancyGuard, AccessControl {
     uint256 public constant MIN_TRIGGER     = 10;           // 카운트다운 트리거 인원
     uint256 public constant CYCLE_INTERVAL  = 7 days;       // 납입 기한 (변경 가능)
     uint256 public constant COLLATERAL_BP   = 14000;        // 140%
+    uint256 public constant INTEREST_BP     = 500;          // 5% 이자율
 
     uint256[TIER_COUNT] public TIER_AMOUNTS = [
         10  * 1e18,
@@ -51,6 +58,7 @@ contract AutoGroupFactory is ReentrancyGuard, AccessControl {
     // ─── 핵심 주소 ───────────────────────────────────────────────────────────
 
     address public immutable vault;
+    address public immutable hhusd;
     address public immutable devWallet;
     address public immutable eventWallet;
 
@@ -96,16 +104,19 @@ contract AutoGroupFactory is ReentrancyGuard, AccessControl {
 
     constructor(
         address _vault,
+        address _hhusd,
         address _devWallet,
         address _eventWallet,
         address _admin
     ) {
         require(_vault       != address(0), "vault required");
+        require(_hhusd       != address(0), "hhusd required");
         require(_devWallet   != address(0), "devWallet required");
         require(_eventWallet != address(0), "eventWallet required");
         require(_admin       != address(0), "admin required");
 
         vault        = _vault;
+        hhusd        = _hhusd;
         devWallet    = _devWallet;
         eventWallet  = _eventWallet;
         nextGroupId  = 1;
@@ -220,7 +231,9 @@ contract AutoGroupFactory is ReentrancyGuard, AccessControl {
             MAX_PER_GROUP,   // totalCycles = 28
             CYCLE_INTERVAL,
             COLLATERAL_BP,
+            INTEREST_BP,
             vault,
+            hhusd,
             devWallet,
             eventWallet
         );
@@ -231,6 +244,9 @@ contract AutoGroupFactory is ReentrancyGuard, AccessControl {
             ICollateralVaultRole(vault).GROUP_ROLE(),
             groupAddr
         );
+        // HHUSD에 MINTER_ROLE + BURNER_ROLE 부여 (납입 소각 / 지급 발행)
+        IHHUSDRoles(hhusd).grantRole(IHHUSDRoles(hhusd).MINTER_ROLE(), groupAddr);
+        IHHUSDRoles(hhusd).grantRole(IHHUSDRoles(hhusd).BURNER_ROLE(), groupAddr);
 
         activeGroup[tierIndex]          = groupAddr;
         tierOfGroup[groupAddr]          = tierIndex;
