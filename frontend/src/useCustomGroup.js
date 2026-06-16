@@ -57,33 +57,20 @@ export function useCustomGroup(signer, account, hhusdContract, onTx) {
 
   // 방 생성 (계장 = msg.sender)
   const createGroup = async ({ contribution, maxMembers, cycleIntervalDays, enrollmentHours }) => {
-    if (!factory || !hhusdContract) return;
-    const contribWei   = ethers.parseEther(String(contribution));
-    const maxM         = BigInt(maxMembers);
-    const cycleWei     = BigInt(cycleIntervalDays) * 24n * 3600n;
-    const enrollWei    = BigInt(enrollmentHours)   * 3600n;
-    const required     = contribWei * maxM * 14000n / 10000n;
-
-    const vaultAddr = ADDR.CollateralVault;
-    const allowance = await hhusdContract.allowance(account, vaultAddr);
-    if (allowance < required) {
-      await onTx(() => hhusdContract.approve(vaultAddr, ethers.MaxUint256));
-    }
+    if (!factory) return;
+    const contribWei = ethers.parseEther(String(contribution));
+    const maxM       = BigInt(maxMembers);
+    const cycleWei   = BigInt(cycleIntervalDays) * 24n * 3600n;
+    const enrollWei  = BigInt(enrollmentHours)   * 3600n;
+    // CollateralVault는 논리적 잠금 — HHUSD approve 불필요
     await onTx(() => factory.createGroup(contribWei, maxM, cycleWei, enrollWei));
     await refresh();
   };
 
   // 기존 방 참가
-  const joinGroup = async (groupAddr, contributionAmount, maxMembers) => {
-    if (!factory || !hhusdContract) return;
-    const contribWei = ethers.parseEther(String(contributionAmount));
-    const required   = contribWei * BigInt(maxMembers) * 14000n / 10000n;
-
-    const vaultAddr = ADDR.CollateralVault;
-    const allowance = await hhusdContract.allowance(account, vaultAddr);
-    if (allowance < required) {
-      await onTx(() => hhusdContract.approve(vaultAddr, ethers.MaxUint256));
-    }
+  const joinGroup = async (groupAddr) => {
+    if (!factory) return;
+    // CollateralVault는 논리적 잠금 — HHUSD approve 불필요
     await onTx(() => factory.joinGroup(groupAddr));
     await refresh();
   };
@@ -117,14 +104,8 @@ export function useCustomGroup(signer, account, hhusdContract, onTx) {
   };
 
   // 납입
-  const contribute = async (groupAddr, contributionAmount) => {
-    const g          = new ethers.Contract(groupAddr, CUSTOM_GROUP_ABI, signer);
-    const contribWei = ethers.parseEther(String(contributionAmount));
-    const vaultAddr  = ADDR.CollateralVault;
-    const allowance  = await hhusdContract.allowance(account, vaultAddr);
-    if (allowance < contribWei) {
-      await onTx(() => hhusdContract.approve(vaultAddr, ethers.MaxUint256));
-    }
+  const contribute = async (groupAddr) => {
+    const g = new ethers.Contract(groupAddr, CUSTOM_GROUP_ABI, signer);
     await onTx(() => g.contribute());
     await refresh();
   };

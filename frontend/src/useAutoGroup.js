@@ -75,36 +75,20 @@ export function useAutoGroup(signer, account, vaultContract, hhusdContract, onTx
 
   // 티어 참가
   const join = async (tierIndex) => {
-    if (!factory || !hhusdContract) return;
-    const contribution = ethers.parseEther(String(TIER_AMOUNTS[tierIndex]));
-    const cycles       = 28n;
-    const required     = contribution * cycles * 14000n / 10000n;
-
-    const vaultAddr = ADDR.CollateralVault;
-    const allowance = await hhusdContract.allowance(account, vaultAddr);
-    if (allowance < required) {
-      await onTx(() => hhusdContract.approve(vaultAddr, ethers.MaxUint256));
-    }
+    if (!factory) return;
+    // CollateralVault 논리적 잠금 — HHUSD approve 불필요
     await onTx(() => factory.join(tierIndex));
     await refresh();
   };
 
-  // 순번 선택
   const selectPosition = async (groupAddr, position) => {
     const g = new ethers.Contract(groupAddr, AUTO_GROUP_ABI, signer);
     await onTx(() => g.selectPosition(position));
     await refresh();
   };
 
-  // 납입 (contribute)
   const contribute = async (groupAddr) => {
     const g = new ethers.Contract(groupAddr, AUTO_GROUP_ABI, signer);
-    const contribution = await g.contributionAmount();
-    const vaultAddr    = ADDR.CollateralVault;
-    const allowance    = await hhusdContract.allowance(account, vaultAddr);
-    if (allowance < contribution) {
-      await onTx(() => hhusdContract.approve(vaultAddr, ethers.MaxUint256));
-    }
     await onTx(() => g.contribute());
     await refresh();
   };
