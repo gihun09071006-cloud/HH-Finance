@@ -33,6 +33,14 @@ export default function App() {
   const [lockedCol, setLockedCol] = useState("0");
   const [usdtBal,   setUsdtBal]   = useState("0");
 
+  // 플랫폼 전체 통계
+  const [platformStats, setPlatformStats] = useState({
+    totalUsers:    0,   // 전체 방 멤버 수 합산
+    totalPool:     "0", // 전체 계 금액 합산 (HHUSD)
+    totalGroups:   0,   // 전체 방 수
+    activeGroups:  0,   // 진행 중인 방 수 (ACTIVE)
+  });
+
   const [loading, setLoading] = useState(false);
   const [txHash,  setTxHash]  = useState(null);
   const [error,   setError]   = useState(null);
@@ -106,6 +114,51 @@ export default function App() {
   useEffect(() => {
     if (account) { autoGroup.refresh(); customGroup.refresh(); }
   }, [account]);
+
+  // ── 플랫폼 통계 집계 ─────────────────────────────────────────────────────
+  useEffect(() => {
+    // autoGroup.activeInfos + customGroup.allGroups 로부터 집계
+    const autoAll  = autoGroup.activeInfos  || [];
+    const customAll = customGroup.allGroups || [];
+
+    let totalUsers   = 0;
+    let totalPoolWei = 0n;
+    let totalGroups  = 0;
+    let activeGroups = 0;
+
+    // 자동화방: activeInfos는 티어별 현재 활성방만 보여줌
+    // 정확한 totalGroups는 autoGroup.activeInfos[i].totalGroups 합산
+    for (const info of autoAll) {
+      totalUsers  += info.memberCount || 0;
+      totalGroups += info.totalGroups || 0;
+      if (info.state === 2) activeGroups++; // ACTIVE
+      // 계 금액 = contributionAmount × totalCycles × memberCount (근사)
+      const tierAmts = [10, 20, 50, 100, 200];
+      const contrib  = BigInt(tierAmts[info.tierIndex] || 0) * BigInt(1e18);
+      const members  = BigInt(info.memberCount || 0);
+      totalPoolWei  += contrib * members * 28n; // 28 사이클 기준
+    }
+
+    // 커스텀방
+    for (const g of customAll) {
+      totalUsers  += g.memberCount || 0;
+      totalGroups += 1;
+      if (g.state === 2) activeGroups++;
+      // 계 금액 = contributionAmount × maxMembers × memberCount (실납입 기준)
+      try {
+        const contrib = BigInt(Math.round(parseFloat(g.contributionAmount || "0") * 1e18));
+        const members = BigInt(g.memberCount || 0);
+        totalPoolWei += contrib * members;
+      } catch {}
+    }
+
+    setPlatformStats({
+      totalUsers,
+      totalPool:    (Number(totalPoolWei) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 0 }),
+      totalGroups,
+      activeGroups,
+    });
+  }, [autoGroup.activeInfos, customGroup.allGroups]);
 
   // ── 유틸 ─────────────────────────────────────────────────────────────────
   const mintHHUSD = async (amount) => {
@@ -191,6 +244,7 @@ export default function App() {
             mintHHUSD={mintHHUSD}
             autoMyGroups={autoGroup.myGroups}
             customMyGroups={customGroup.myGroups}
+            platformStats={platformStats}
           />
         )}
         {tab === "auto" && (

@@ -93,6 +93,28 @@ async function main() {
   await group.waitForDeployment();
   console.log("  Group #1 :", await group.getAddress());
 
+  // ── 8. AutoGroupFactory ───────────────────────────────────────────────────
+  console.log("[8] AutoGroupFactory 배포...");
+  const autoFactory = await ethers.deployContract("AutoGroupFactory", [
+    await vault.getAddress(),
+    devWallet.address,
+    eventWallet.address,
+    deployer.address,
+  ]);
+  await autoFactory.waitForDeployment();
+  console.log("  AutoFactory:", await autoFactory.getAddress());
+
+  // ── 9. CustomGroupFactory ─────────────────────────────────────────────────
+  console.log("[9] CustomGroupFactory 배포...");
+  const customFactory = await ethers.deployContract("CustomGroupFactory", [
+    await vault.getAddress(),
+    devWallet.address,
+    eventWallet.address,
+    deployer.address,
+  ]);
+  await customFactory.waitForDeployment();
+  console.log("  CustomFactory:", await customFactory.getAddress());
+
   // ── 역할 설정 ─────────────────────────────────────────────────────────────
   console.log("\n역할(Role) 설정 중...");
   const MINTER      = await hhusd.MINTER_ROLE();
@@ -106,6 +128,11 @@ async function main() {
   await hhusd.grantRole(BURNER, await treasury.getAddress());
   await hhusd.grantRole(BURNER, await vault.getAddress());
   await vault.grantRole(GROUP_ROLE, await group.getAddress());
+
+  // Factory가 GROUP_ROLE을 그룹에 부여할 수 있게 ADMIN_ROLE 부여
+  const DEFAULT_ADMIN = await vault.DEFAULT_ADMIN_ROLE();
+  await vault.grantRole(DEFAULT_ADMIN, await autoFactory.getAddress());
+  await vault.grantRole(DEFAULT_ADMIN, await customFactory.getAddress());
   await registry.grantRole(REGISTRAR, deployer.address);
   await treasury.grantRole(PAYOUT_ROLE, await group.getAddress());
 
@@ -135,13 +162,15 @@ async function main() {
     eventWallet: eventWallet.address,
     feeReceiver: feeReceiver.address,
     contracts: {
-      MockUSDT:        await usdt.getAddress(),
-      HHUSD:           await hhusd.getAddress(),
-      CollateralVault: await vault.getAddress(),
-      GroupRegistry:   await registry.getAddress(),
-      TreasuryV2:      await treasury.getAddress(),
-      MockVRFAssigner: await mockVRF.getAddress(),
-      PublicGroupVRF:  await group.getAddress(),
+      MockUSDT:           await usdt.getAddress(),
+      HHUSD:              await hhusd.getAddress(),
+      CollateralVault:    await vault.getAddress(),
+      GroupRegistry:      await registry.getAddress(),
+      TreasuryV2:         await treasury.getAddress(),
+      MockVRFAssigner:    await mockVRF.getAddress(),
+      PublicGroupVRF:     await group.getAddress(),
+      AutoGroupFactory:   await autoFactory.getAddress(),
+      CustomGroupFactory: await customFactory.getAddress(),
     },
   };
 

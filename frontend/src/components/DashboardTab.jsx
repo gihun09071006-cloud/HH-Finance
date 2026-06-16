@@ -8,15 +8,53 @@ const STATE_COLOR = {
 export default function DashboardTab({
   account, hhusdBal, lockedCol, usdtBal,
   mintHHUSD, contracts, onTx, loading, refreshBalances,
-  autoMyGroups, customMyGroups, fmt, short,
+  autoMyGroups, customMyGroups, platformStats, fmt, short,
 }) {
   const allMyGroups = [
     ...autoMyGroups.map(g => ({ ...g, type: "자동화방" })),
     ...customMyGroups.map(g => ({ ...g, type: "커스텀방" })),
   ];
 
+  const ps = platformStats || {};
+
   return (
     <div>
+      {/* 플랫폼 전체 통계 */}
+      <div style={s.platformBanner}>
+        <div style={s.platformTitle}>HH Finance 플랫폼 현황</div>
+        <div style={s.statsRow}>
+          <StatItem
+            icon="👥"
+            label="총 참여 유저 수"
+            value={(ps.totalUsers || 0).toLocaleString() + "명"}
+            color="#7EB8F7"
+          />
+          <div style={s.statDivider} />
+          <StatItem
+            icon="💰"
+            label="총 계 금액"
+            value={(ps.totalPool || "0") + " HHUSD"}
+            color="#F7C97E"
+            sub="진행 중인 모든 방 합산"
+          />
+          <div style={s.statDivider} />
+          <StatItem
+            icon="🏠"
+            label="총 방 수"
+            value={(ps.totalGroups || 0) + "개"}
+            color="#A8F77E"
+          />
+          <div style={s.statDivider} />
+          <StatItem
+            icon="⚡"
+            label="진행 중인 방"
+            value={(ps.activeGroups || 0) + "개"}
+            color="#C8A8F7"
+            sub="ACTIVE 상태"
+          />
+        </div>
+      </div>
+
       <div style={s.sectionTitle}>내 자산 현황</div>
 
       {/* 자산 카드 */}
@@ -102,6 +140,17 @@ export default function DashboardTab({
   );
 }
 
+function StatItem({ icon, label, value, color, sub }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1 }}>
+      <span style={{ fontSize: 24 }}>{icon}</span>
+      <span style={{ color: "#666", fontSize: 11 }}>{label}</span>
+      <span style={{ color: color || "#eee", fontSize: 20, fontWeight: 800 }}>{value}</span>
+      {sub && <span style={{ color: "#444", fontSize: 10 }}>{sub}</span>}
+    </div>
+  );
+}
+
 function Card({ title, value, sub, color }) {
   return (
     <div style={s.card}>
@@ -113,6 +162,21 @@ function Card({ title, value, sub, color }) {
 }
 
 const s = {
+  platformBanner: {
+    background: "linear-gradient(135deg, #0d1a2a 0%, #0a1020 50%, #0d1a0d 100%)",
+    border: "1px solid #1e3a5a",
+    borderRadius: 16, padding: "24px 32px", marginBottom: 28,
+  },
+  platformTitle: {
+    fontSize: 13, fontWeight: 600, color: "#7EB8F7",
+    marginBottom: 20, textTransform: "uppercase", letterSpacing: 1,
+  },
+  statsRow: {
+    display: "flex", alignItems: "center", gap: 0,
+  },
+  statDivider: {
+    width: 1, height: 50, background: "#1e2e1e", margin: "0 16px",
+  },
   cardRow: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 28 },
   card: { background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, padding: "18px 20px" },
   section: { marginBottom: 28 },
