@@ -352,7 +352,7 @@ describe("PublicGroupVRF", function () {
       // 담보 소진될 때까지 미납 처리
       let m = await group.getMember(users[0].address);
       while (m.status !== 3n) {
-        await group.warningMissedPayment(users[0].address);
+        await group.connect(devWallet).warningMissedPayment(users[0].address);
         m = await group.getMember(users[0].address);
       }
       await expect(group.connect(users[0]).contribute())
@@ -387,16 +387,16 @@ describe("PublicGroupVRF", function () {
     });
 
     it("1차 경고 → WARNED 상태", async () => {
-      await group.warningMissedPayment(users[0].address);
+      await group.connect(devWallet).warningMissedPayment(users[0].address);
       const m = await group.getMember(users[0].address);
       expect(m.status).to.equal(1); // WARNED
       expect(m.missedPayments).to.equal(1);
     });
 
     it("2차 경고 → PENALIZED + 담보 슬래시", async () => {
-      await group.warningMissedPayment(users[0].address);
+      await group.connect(devWallet).warningMissedPayment(users[0].address);
       const collateralBefore = await vault.getGroupCollateral(GROUP_ID, users[0].address);
-      await group.warningMissedPayment(users[0].address);
+      await group.connect(devWallet).warningMissedPayment(users[0].address);
 
       const m = await group.getMember(users[0].address);
       expect(m.status).to.equal(2); // PENALIZED
@@ -408,15 +408,19 @@ describe("PublicGroupVRF", function () {
       // 담보 1400 HHUSD / 기여금 100 → 14번 차감하면 0 or REMOVED
       let m = await group.getMember(users[0].address);
       while (m.status !== 3n) {
-        await group.warningMissedPayment(users[0].address);
+        await group.connect(devWallet).warningMissedPayment(users[0].address);
         m = await group.getMember(users[0].address);
       }
       expect(m.status).to.equal(3); // REMOVED
       expect(await vault.getGroupCollateral(GROUP_ID, users[0].address)).to.equal(0);
     });
 
-    it("비멤버 경고 시 revert", async () => {
+    it("비멤버 경고 시 revert (권한 없는 계정 → Unauthorized)", async () => {
+      // 권한 없는 계정이 호출하면 onlyKeeperOrDev가 먼저 revert
       await expect(group.warningMissedPayment(users[15].address))
+        .to.be.revertedWithCustomError(group, "Unauthorized");
+      // devWallet이 비멤버 호출하면 NotMember revert
+      await expect(group.connect(devWallet).warningMissedPayment(users[15].address))
         .to.be.revertedWithCustomError(group, "NotMember");
     });
   });

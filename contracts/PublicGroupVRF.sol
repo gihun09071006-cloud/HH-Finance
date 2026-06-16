@@ -85,6 +85,7 @@ contract PublicGroupVRF is ReentrancyGuard {
     uint256 public constant ENROLLMENT_DURATION  = 24 hours;
     uint256 public constant SELECTION_DURATION   = 12 hours;
     uint256 public constant VRF_TIMEOUT          = 1 hours;
+    uint256 public constant MAX_VRF_RETRIES      = 3;
 
     // 패널티 분배 비율 (basis points, 합계 10000)
     uint256 public constant PENALTY_DEV_BP       = 3000;   // 30% → 개발자
@@ -92,6 +93,11 @@ contract PublicGroupVRF is ReentrancyGuard {
 
     // 총 사이클의 80% 이상 미납 시 잔여 담보 몰수 가능
     uint256 public constant SLASH_THRESHOLD_BP   = 8000;   // 80%
+
+    // ─── Roles ───────────────────────────────────────────────────────────────
+
+    // KEEPER_ROLE: warningMissedPayment 호출 권한 (자동화 봇 또는 관리자)
+    address public keeper;
 
     // ─── Mutable State ───────────────────────────────────────────────────────
 
@@ -101,6 +107,7 @@ contract PublicGroupVRF is ReentrancyGuard {
     uint256 public positionSelectionDeadline;
     uint256 public vrfRequestedAt;
     uint256 public pendingVrfRequestId;
+    uint256 public vrfRetryCount;
 
     uint256 public currentCycle;
     uint256 public cycleStartTime;
@@ -126,8 +133,10 @@ contract PublicGroupVRF is ReentrancyGuard {
     event MemberRemoved(address indexed user, uint256 cycle);
     event GroupCompleted();
     event GroupCancelled(string reason);
+    event CollateralRefundFailed(address indexed user, uint256 amount, string reason);
 
     /// @notice 미납 횟수가 80% 임계치에 도달하면 발생 — 프론트/앱에서 경고 표시용
+    event KeeperUpdated(address indexed oldKeeper, address indexed newKeeper);
     event CollateralAtRisk(
         address indexed user,
         uint256 missedCount,
@@ -151,12 +160,19 @@ contract PublicGroupVRF is ReentrancyGuard {
     error PositionOutOfRange(uint8 pos, uint256 max);
     error OnlyVRFAssigner();
     error VRFNotTimedOut();
+    error VRFMaxRetriesExceeded();
     error AlreadySelectedPosition();
+    error Unauthorized();
 
     // ─── Modifiers ────────────────────────────────────────────────────────────
 
     modifier inState(GroupState s) {
         if (state != s) revert NotInState(s, state);
+        _;
+    }
+
+    modifier onlyKeeperOrDev() {
+        if (msg.sender != keeper && msg.sender != devWallet) revert Unauthorized();
         _;
     }
 
@@ -175,6 +191,8 @@ contract PublicGroupVRF is ReentrancyGuard {
     ) {
         require(_devWallet   != address(0), "devWallet required");
         require(_eventWallet != address(0), "eventWallet required");
+        require(_vault       != address(0), "vault required");
+        require(_vrfAssigner != address(0), "vrfAssigner required");
         groupId              = _groupId;
         contributionAmount   = _contributionAmount;
         totalCycles          = _totalCycles;
@@ -185,9 +203,18 @@ contract PublicGroupVRF is ReentrancyGuard {
         factory              = msg.sender;
         devWallet            = _devWallet;
         eventWallet          = _eventWallet;
+        keeper               = _devWallet; // 초기 keeper는 devWallet
 
         state = GroupState.ENROLLING;
         enrollmentDeadline = block.timestamp + ENROLLMENT_DURATION;
+    }
+
+    // ─── Keeper 관리 ─────────────────────────────────────────────────────────
+
+    function setKeeper(address newKeeper) external {
+        if (msg.sender != devWallet) revert Unauthorized();
+        emit KeeperUpdated(keeper, newKeeper);
+        keeper = newKeeper;
     }
 
     // ─── Phase 1: Enrollment ─────────────────────────────────────────────────
@@ -302,9 +329,11 @@ contract PublicGroupVRF is ReentrancyGuard {
      */
     function receiveRandomPositions(uint256[] calldata randomWords)
         external
+        nonReentrant
         inState(GroupState.PENDING_VRF)
     {
         if (msg.sender != address(vrfAssigner)) revert OnlyVRFAssigner();
+        require(randomWords.length > 0, "Empty randomWords");
 
         emit VRFFulfilled(pendingVrfRequestId);
 
@@ -315,11 +344,22 @@ contract PublicGroupVRF is ReentrancyGuard {
 
     /**
      * @notice Re-request VRF if the first request timed out (1 hour)
-     * @dev Possible if Chainlink node was offline or subscription ran out of LINK
+     * @dev MAX_VRF_RETRIES 초과 시 폴백으로 블록 해시 기반 의사난수 사용
      */
     function retryVRFRequest() external inState(GroupState.PENDING_VRF) {
         if (block.timestamp < vrfRequestedAt + VRF_TIMEOUT) revert VRFNotTimedOut();
 
+        if (vrfRetryCount >= MAX_VRF_RETRIES) {
+            // 폴백: block.prevrandao 기반 의사난수로 포지션 할당
+            uint256 fallbackSeed = uint256(
+                keccak256(abi.encodePacked(block.prevrandao, block.timestamp, memberList.length))
+            );
+            _assignUnselectedPositions(fallbackSeed);
+            _startGroup();
+            return;
+        }
+
+        vrfRetryCount++;
         vrfRequestedAt = block.timestamp;
         uint256 reqId = vrfAssigner.requestRandomness(memberList.length);
         pendingVrfRequestId = reqId;
@@ -341,7 +381,9 @@ contract PublicGroupVRF is ReentrancyGuard {
             "Cycle not ended"
         );
 
+        require(currentCycle <= type(uint8).max, "Cycle overflow");
         address recipient = positionToMember[uint8(currentCycle)];
+        require(recipient != address(0), "No recipient for cycle");
         uint256 payout = contributionAmount * memberList.length;
 
         members[recipient].hasReceivedPayout = true;
@@ -365,7 +407,7 @@ contract PublicGroupVRF is ReentrancyGuard {
      *   2. 담보 부족 → 잔여 담보를 수령인에게 지급 후 REMOVED
      *      그룹 완료 시 잔여 담보는 30% dev / 70% event 분배
      */
-    function warningMissedPayment(address user) external inState(GroupState.ACTIVE) {
+    function warningMissedPayment(address user) external onlyKeeperOrDev inState(GroupState.ACTIVE) {
         Member storage m = members[user];
         if (m.wallet == address(0) || m.status == MemberStatus.REMOVED) revert NotMember();
 
@@ -418,7 +460,6 @@ contract PublicGroupVRF is ReentrancyGuard {
         require(amount > 0, "Amount must be > 0");
 
         vault.lockCollateral(msg.sender, groupId, amount);
-        m.collateral += amount;
 
         uint256 newTotal = vault.getGroupCollateral(groupId, msg.sender);
         emit CollateralToppedUp(msg.sender, amount, newTotal);
@@ -515,7 +556,13 @@ contract PublicGroupVRF is ReentrancyGuard {
 
             if (members[m].missedPayments == 0) {
                 // 성실 납부 유저 → 담보 전액 환불
-                vault.unlockCollateral(m, groupId, locked);
+                try vault.unlockCollateral(m, groupId, locked) {
+                    // success
+                } catch Error(string memory reason) {
+                    emit CollateralRefundFailed(m, locked, reason);
+                } catch {
+                    emit CollateralRefundFailed(m, locked, "unknown");
+                }
             } else {
                 // 미납 이력 유저 → 잔여 담보 패널티 분배 (30% dev / 70% event)
                 _distributePenalty(m, locked);

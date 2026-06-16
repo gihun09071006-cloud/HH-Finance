@@ -71,8 +71,11 @@ contract TreasuryV2 is
 
     // ─── Group Pool State ─────────────────────────────────────────────────────
     //
-    // groupPool[groupId] = total USDT currently pooled for this group's active cycle
+    // groupPool[groupId] = total USDT currently pooled for this group (모든 사이클 합산)
     mapping(uint256 => uint256) public groupPool;
+
+    // cyclePool[groupId][cycle] = 해당 사이클에 모인 USDT (지급 후 0으로 초기화)
+    mapping(uint256 => mapping(uint256 => uint256)) public cyclePool;
 
     // contributed[groupId][cycle][member] = amount contributed this cycle
     mapping(uint256 => mapping(uint256 => mapping(address => uint256)))
@@ -132,10 +135,13 @@ contract TreasuryV2 is
         address _feeReceiver,
         address _groupRegistry
     ) external initializer {
+        require(admin         != address(0), "Admin required");
+        require(_usdtToken    != address(0), "USDT required");
+        require(_hhusdToken   != address(0), "HHUSD required");
+        require(_feeReceiver  != address(0), "FeeReceiver required");
+        require(_groupRegistry != address(0), "Registry required");
         __AccessControl_init();
-        
         __Pausable_init();
-
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
@@ -255,7 +261,8 @@ contract TreasuryV2 is
 
         hasPaidCycle[groupId][cycleNumber][msg.sender] = true;
         contributed[groupId][cycleNumber][msg.sender]  = required;
-        groupPool[groupId] += required;
+        groupPool[groupId]              += required;
+        cyclePool[groupId][cycleNumber] += required;
 
         emit GroupContribution(groupId, msg.sender, cycleNumber, required);
     }
@@ -283,13 +290,14 @@ contract TreasuryV2 is
         if (cyclePayoutExecuted[groupId][cycleNumber])
             revert CycleAlreadyPaidOut(groupId, cycleNumber);
 
-        uint256 pool = groupPool[groupId];
+        uint256 pool = cyclePool[groupId][cycleNumber];
         if (pool == 0) revert EmptyPool(groupId);
 
         if (recipient == address(0)) revert InvalidAddress();
 
         cyclePayoutExecuted[groupId][cycleNumber] = true;
-        groupPool[groupId] = 0;
+        cyclePool[groupId][cycleNumber] = 0;
+        groupPool[groupId] -= pool;
 
         usdtToken.safeTransfer(recipient, pool);
 
@@ -317,7 +325,8 @@ contract TreasuryV2 is
             if (amt > 0) {
                 contributed[groupId][cycle][m]   = 0;
                 hasPaidCycle[groupId][cycle][m] = false;
-                groupPool[groupId] -= amt;
+                groupPool[groupId]              -= amt;
+                cyclePool[groupId][cycle]       -= amt;
                 usdtToken.safeTransfer(m, amt);
                 totalRefunded += amt;
             }

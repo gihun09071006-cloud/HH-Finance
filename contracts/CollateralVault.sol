@@ -70,9 +70,9 @@ contract CollateralVault is
     }
 
     function initialize(address admin, address _hhusdToken) external initializer {
+        require(admin != address(0), "Admin required");
+        require(_hhusdToken != address(0), "HHUSD required");
         __AccessControl_init();
-        
-        
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(UPGRADER_ROLE, admin);

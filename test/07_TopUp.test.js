@@ -96,7 +96,7 @@ describe("topUpCollateral 테스트", function () {
       const badUser = users[0];
 
       // 1회 미납
-      await group.warningMissedPayment(badUser.address);
+      await group.connect(devWallet).warningMissedPayment(badUser.address);
       const colAfterMiss = await vault.getGroupCollateral(GROUP_ID, badUser.address);
       // 담보가 CONTRIBUTION만큼 차감됐어야 함
       expect(colAfterMiss).to.equal(REQUIRED_COL - CONTRIBUTION);
@@ -122,7 +122,7 @@ describe("topUpCollateral 테스트", function () {
       const badUser = users[0];
 
       // 1회 미납 (80% 미달)
-      await group.warningMissedPayment(badUser.address);
+      await group.connect(devWallet).warningMissedPayment(badUser.address);
 
       // topUp으로 담보 복원
       const topUpAmount = ethers.parseEther("500");
@@ -160,7 +160,7 @@ describe("topUpCollateral 테스트", function () {
 
       // 담보 소진까지 미납 반복 → REMOVED
       while (true) {
-        await group.warningMissedPayment(badUser.address);
+        await group.connect(devWallet).warningMissedPayment(badUser.address);
         const m = await group.getMember(badUser.address);
         if (m.status === 3n) break; // REMOVED
       }

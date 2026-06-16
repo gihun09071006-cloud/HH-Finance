@@ -153,7 +153,7 @@ describe("그룹 완료 시 30/70 분배 E2E", function () {
       for (let cycle = 1; cycle <= 10; cycle++) {
         if (cycle <= 5) {
           // badUser는 미납 처리
-          await group.warningMissedPayment(badUser.address);
+          await group.connect(devWallet).warningMissedPayment(badUser.address);
           // 나머지 9명은 정상 기여
           for (const u of users.slice(1, 10)) {
             await group.connect(u).contribute();

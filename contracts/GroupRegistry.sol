@@ -59,8 +59,8 @@ contract GroupRegistry is
     constructor() { _disableInitializers(); }
 
     function initialize(address admin) external initializer {
+        require(admin != address(0), "Admin required");
         __AccessControl_init();
-
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(REGISTRAR_ROLE, admin);
@@ -118,12 +118,16 @@ contract GroupRegistry is
         GroupInfo storage info = _groups[groupId];
         if (!info.registered) return false;
 
-        IPublicGroupVRF.GroupState s = IPublicGroupVRF(info.contractAddress).state();
-        return (
-            s == IPublicGroupVRF.GroupState.ENROLLING ||
-            s == IPublicGroupVRF.GroupState.PENDING_VRF ||
-            s == IPublicGroupVRF.GroupState.ACTIVE
-        );
+        // 외부 호출 실패 시 false 반환 (그룹 컨트랙트 버그로 Treasury 중단 방지)
+        try IPublicGroupVRF(info.contractAddress).state() returns (IPublicGroupVRF.GroupState s) {
+            return (
+                s == IPublicGroupVRF.GroupState.ENROLLING ||
+                s == IPublicGroupVRF.GroupState.PENDING_VRF ||
+                s == IPublicGroupVRF.GroupState.ACTIVE
+            );
+        } catch {
+            return false;
+        }
     }
 
     /**

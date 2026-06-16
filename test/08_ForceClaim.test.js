@@ -99,7 +99,7 @@ describe("forceClaimPenaltyCollateral 테스트", function () {
       // 각 미납마다 담보에서 CONTRIBUTION(100)씩 차감
       // REQUIRED_COL = 1400, 8회 미납 후 남은 담보 = 1400 - 800 = 600
       for (let i = 0; i < 8; i++) {
-        await group.warningMissedPayment(badUser.address);
+        await group.connect(devWallet).warningMissedPayment(badUser.address);
       }
 
       const m = await group.getMember(badUser.address);
@@ -145,7 +145,7 @@ describe("forceClaimPenaltyCollateral 테스트", function () {
 
       // 7회 미납 (80% 미달)
       for (let i = 0; i < 7; i++) {
-        await group.warningMissedPayment(badUser.address);
+        await group.connect(devWallet).warningMissedPayment(badUser.address);
       }
 
       const m = await group.getMember(badUser.address);
@@ -168,7 +168,7 @@ describe("forceClaimPenaltyCollateral 테스트", function () {
 
       // 8회 미납
       for (let i = 0; i < 8; i++) {
-        await group.warningMissedPayment(badUser.address);
+        await group.connect(devWallet).warningMissedPayment(badUser.address);
       }
 
       // users[0]가 호출 시도
@@ -189,7 +189,7 @@ describe("forceClaimPenaltyCollateral 테스트", function () {
 
       // 담보 소진까지 미납 반복 → REMOVED
       while (true) {
-        await group.warningMissedPayment(badUser.address);
+        await group.connect(devWallet).warningMissedPayment(badUser.address);
         const m = await group.getMember(badUser.address);
         if (m.status === 3n) break; // REMOVED
       }

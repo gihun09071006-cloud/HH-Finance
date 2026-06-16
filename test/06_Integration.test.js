@@ -258,7 +258,7 @@ describe("E2E Integration", function () {
       const cycleRecipient = await group.positionToMember(1);
       const recipientBalBefore = await hhusd.balanceOf(cycleRecipient);
 
-      await group.warningMissedPayment(badUser.address);
+      await group.connect(devWallet).warningMissedPayment(badUser.address);
 
       const m = await group.getMember(badUser.address);
       expect(m.status).to.equal(1); // WARNED
@@ -273,7 +273,7 @@ describe("E2E Integration", function () {
 
     it("반복 미납 → 담보 소진 후 REMOVED", async () => {
       while (true) {
-        await group.warningMissedPayment(badUser.address);
+        await group.connect(devWallet).warningMissedPayment(badUser.address);
         const m = await group.getMember(badUser.address);
         if (m.status === 3n) break;
         expect(m.status).to.equal(2); // PENALIZED
