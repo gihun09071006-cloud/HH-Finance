@@ -1,9 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import HHFinanceDashboard from "../HHFinanceDashboard.jsx";
+import App from "./App.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <HHFinanceDashboard />
+    <App />
   </React.StrictMode>
 );
