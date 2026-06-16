@@ -356,21 +356,26 @@ contract PublicGroupVRF is ReentrancyGuard {
     }
 
     /**
-     * @notice 미납 유저 처리: 담보에서 기여금 자동 차감 + 패널티 분배
+     * @notice 미납 유저 처리
      *
      * 흐름:
-     *   1. 담보 충분 → contributionAmount 차감 (30% dev / 70% event 분배)
-     *      - missedPayments가 총 사이클의 80% 이상이면 CollateralAtRisk 이벤트 발생
-     *   2. 담보 부족 → 잔액 전부 패널티 분배 후 REMOVED
+     *   1. 담보 충분 → contributionAmount를 현재 사이클 수령인에게 직접 지급
+     *      (미납이어도 수령인은 정상 금액을 받음)
+     *      80% 임계치 도달 시 CollateralAtRisk 경고 이벤트 발생
+     *   2. 담보 부족 → 잔여 담보를 수령인에게 지급 후 REMOVED
+     *      그룹 완료 시 잔여 담보는 30% dev / 70% event 분배
      */
     function warningMissedPayment(address user) external inState(GroupState.ACTIVE) {
         Member storage m = members[user];
         if (m.wallet == address(0) || m.status == MemberStatus.REMOVED) revert NotMember();
 
+        // 현재 사이클 수령인: 미납 기여금이 여기로 들어감
+        address cycleRecipient = positionToMember[uint8(currentCycle)];
         uint256 available = vault.getGroupCollateral(groupId, user);
 
         if (available >= contributionAmount) {
-            _distributePenalty(user, contributionAmount);
+            // 담보에서 기여금 차감 → 사이클 수령인에게 직접 지급
+            vault.slashCollateral(user, groupId, contributionAmount, cycleRecipient);
             m.missedPayments++;
 
             if (m.missedPayments == 1) {
@@ -393,8 +398,8 @@ contract PublicGroupVRF is ReentrancyGuard {
                 );
             }
         } else {
-            // 담보 부족 → 잔액 패널티 분배 후 제거
-            if (available > 0) _distributePenalty(user, available);
+            // 담보 부족 → 잔여 담보를 수령인에게 지급 후 제거
+            if (available > 0) vault.slashCollateral(user, groupId, available, cycleRecipient);
             m.missedPayments++;
             m.status = MemberStatus.REMOVED;
             emit MemberRemoved(user, currentCycle);
