@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ethers } from "ethers";
 import ADDRESSES from "../deployedAddresses.json";
 import { useLang } from "../i18n/LanguageContext.jsx";
 
@@ -12,6 +14,27 @@ export default function DashboardTab({
   autoMyGroups, customMyGroups, platformStats, fmt, short,
 }) {
   const { t } = useLang();
+  const [swapAmount, setSwapAmount]   = useState("");
+  const [redeemAmount, setRedeemAmount] = useState("");
+
+  const handleDeposit = async () => {
+    if (!contracts || !swapAmount) return;
+    const amt = ethers.parseEther(swapAmount);
+    // 1. approve
+    await onTx(() => contracts.usdt.approve(ADDRESSES.contracts.TreasuryV2, amt));
+    // 2. deposit
+    await onTx(() => contracts.treasury.depositUSDT(amt));
+    await refreshBalances();
+    setSwapAmount("");
+  };
+
+  const handleRedeem = async () => {
+    if (!contracts || !redeemAmount) return;
+    const amt = ethers.parseEther(redeemAmount);
+    await onTx(() => contracts.treasury.redeemHHUSD(amt));
+    await refreshBalances();
+    setRedeemAmount("");
+  };
 
   const allMyGroups = [
     ...autoMyGroups.map(g => ({ ...g, type: t("tab_auto") })),
@@ -65,6 +88,48 @@ export default function DashboardTab({
           sub={t("all_groups_combined")} />
         <Card title={t("usdt_balance")} value={`${fmt(usdtBal)} USDT`} color="#A8F77E" />
         <Card title={t("my_rooms_count")} value={allMyGroups.length + t("rooms_unit")} color="#C8A8F7" />
+      </div>
+
+      {/* USDT ↔ HHUSD 스왑 */}
+      <div style={s.section}>
+        <div style={s.sectionTitle}>💱 USDT ↔ HHUSD</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* USDT → HHUSD */}
+          <div style={s.swapCard}>
+            <div style={{ color: "#7EB8F7", fontWeight: 700, marginBottom: 8 }}>USDT → HHUSD</div>
+            <div style={{ color: "#555", fontSize: 12, marginBottom: 12 }}>
+              보유 USDT: {fmt(usdtBal)}
+            </div>
+            <input
+              type="number" min="1" placeholder="USDT 금액"
+              value={swapAmount}
+              onChange={e => setSwapAmount(e.target.value)}
+              style={s.input}
+            />
+            <button onClick={handleDeposit} disabled={loading || !swapAmount} style={s.depositBtn}>
+              {loading ? "처리 중..." : "발행 (Deposit)"}
+            </button>
+          </div>
+          {/* HHUSD → USDT */}
+          <div style={s.swapCard}>
+            <div style={{ color: "#F7C97E", fontWeight: 700, marginBottom: 8 }}>HHUSD → USDT</div>
+            <div style={{ color: "#555", fontSize: 12, marginBottom: 12 }}>
+              보유 HHUSD: {fmt(hhusdBal)}
+            </div>
+            <input
+              type="number" min="1" placeholder="HHUSD 금액"
+              value={redeemAmount}
+              onChange={e => setRedeemAmount(e.target.value)}
+              style={s.input}
+            />
+            <button onClick={handleRedeem} disabled={loading || !redeemAmount} style={s.redeemBtn}>
+              {loading ? "처리 중..." : "환급 (Redeem)"}
+            </button>
+          </div>
+        </div>
+        <div style={{ color: "#444", fontSize: 11, marginTop: 8 }}>
+          * Deposit 수수료 2.5% / Redeem 수수료 2.5% (TreasuryV2)
+        </div>
       </div>
 
       <div style={s.section}>
@@ -191,5 +256,24 @@ const s = {
   addrRow: {
     display: "flex", gap: 16, padding: "6px 12px",
     background: "#0f0f0f", borderRadius: 6,
+  },
+  swapCard: {
+    background: "#111", border: "1px solid #1e1e1e", borderRadius: 12,
+    padding: "18px 20px", display: "flex", flexDirection: "column", gap: 8,
+  },
+  input: {
+    background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#eee",
+    padding: "10px 14px", borderRadius: 8, fontSize: 14, width: "100%",
+    boxSizing: "border-box",
+  },
+  depositBtn: {
+    background: "#7EB8F7", color: "#111", border: "none",
+    padding: "10px", borderRadius: 8, cursor: "pointer", fontWeight: 700,
+    fontSize: 14, marginTop: 4,
+  },
+  redeemBtn: {
+    background: "#F7C97E", color: "#111", border: "none",
+    padding: "10px", borderRadius: 8, cursor: "pointer", fontWeight: 700,
+    fontSize: 14, marginTop: 4,
   },
 };

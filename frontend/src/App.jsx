@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 
 import HHUSD_ABI   from "./abi/HHUSD.json";
 import VAULT_ABI   from "./abi/CollateralVault.json";
+import TREASURY_ABI from "./abi/TreasuryV2.json";
 import ADDRESSES   from "./deployedAddresses.json";
 
 import { useAutoGroup }   from "./useAutoGroup.js";
@@ -123,9 +124,10 @@ function AppInner() {
       const net  = await prov.getNetwork();
 
       const c = {
-        hhusd: new ethers.Contract(ADDR.HHUSD,          HHUSD_ABI, sign),
-        vault: new ethers.Contract(ADDR.CollateralVault, VAULT_ABI, sign),
-        usdt:  new ethers.Contract(ADDR.MockUSDT, [
+        hhusd:    new ethers.Contract(ADDR.HHUSD,          HHUSD_ABI,    sign),
+        vault:    new ethers.Contract(ADDR.CollateralVault, VAULT_ABI,    sign),
+        treasury: new ethers.Contract(ADDR.TreasuryV2,      TREASURY_ABI, sign),
+        usdt:     new ethers.Contract(ADDR.MockUSDT, [
           "function balanceOf(address) view returns (uint256)",
           "function approve(address,uint256) returns (bool)",
           "function mint(address,uint256)",
@@ -232,7 +234,7 @@ function AppInner() {
     account, loading, txHash, error,
     hhusdBal, lockedCol, usdtBal,
     refreshBalances, fmt, short, onTx,
-    contracts,
+    contracts, ethers,
   };
 
   // ── 미연결 화면 ───────────────────────────────────────────────────────────
