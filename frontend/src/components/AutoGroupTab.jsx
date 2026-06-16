@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLang } from "../i18n/LanguageContext.jsx";
 
 const STATE_COLOR = {
   ENROLLING: "#7EB8F7", POSITION_SELECTION: "#F7C97E",
@@ -10,47 +11,37 @@ export default function AutoGroupTab({
   activeInfos, myGroups, TIER_LABELS, TIER_AMOUNTS,
   join, selectPosition, contribute, refresh,
 }) {
-  const [posInput, setPosInput] = useState({});  // groupAddr → position 입력값
-  const [subTab, setSubTab]     = useState("tiers"); // "tiers" | "my"
-
-  const deadline = (ts) => {
-    if (!ts) return "-";
-    const d = new Date(ts * 1000);
-    return d.toLocaleString("ko-KR");
-  };
+  const { t } = useLang();
+  const [posInput, setPosInput] = useState({});
+  const [subTab, setSubTab]     = useState("tiers");
 
   const timeLeft = (ts) => {
     if (!ts) return "";
     const diff = ts - Math.floor(Date.now() / 1000);
-    if (diff <= 0) return "마감됨";
+    if (diff <= 0) return t("closed");
     const h = Math.floor(diff / 3600);
     const m = Math.floor((diff % 3600) / 60);
-    return `${h}시간 ${m}분 남음`;
+    return `${h}${t("hours")} ${m}${t("minutes")} ${t("remaining")}`;
   };
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={s.pageTitle}>자동화방</div>
-        <button onClick={refresh} disabled={loading} style={s.refreshBtn}>↻ 새로고침</button>
+        <div style={s.pageTitle}>{t("tab_auto")}</div>
+        <button onClick={refresh} disabled={loading} style={s.refreshBtn}>↻ {t("refresh")}</button>
       </div>
 
-      <div style={s.desc}>
-        10~28명이 모이면 자동 진행되는 계모임 방입니다.
-        10명 입장 시 24시간 카운트다운이 시작되며, 이후 12시간 순번 선택 창이 열립니다.
-      </div>
+      <div style={s.desc}>{t("auto_desc")}</div>
 
-      {/* 서브탭 */}
       <div style={s.subTabBar}>
         <button onClick={() => setSubTab("tiers")} style={{ ...s.subTab, ...(subTab === "tiers" ? s.subTabActive : {}) }}>
-          티어별 현황
+          {t("tier_status")}
         </button>
         <button onClick={() => setSubTab("my")} style={{ ...s.subTab, ...(subTab === "my" ? s.subTabActive : {}) }}>
-          내 방 ({myGroups.length})
+          {t("my_room_tab")} ({myGroups.length})
         </button>
       </div>
 
-      {/* ── 티어별 현황 ── */}
       {subTab === "tiers" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {activeInfos.map((info, i) => (
@@ -63,10 +54,10 @@ export default function AutoGroupTab({
                       {info.stateName}
                     </span>
                   ) : (
-                    <span style={{ color: "#444", fontSize: 13 }}>방 없음</span>
+                    <span style={{ color: "#444", fontSize: 13 }}>{t("no_room")}</span>
                   )}
                   {info.totalGroups > 0 && (
-                    <span style={{ color: "#555", fontSize: 12 }}>총 {info.totalGroups}개 방 생성됨</span>
+                    <span style={{ color: "#555", fontSize: 12 }}>{t("total_created")} {info.totalGroups}{t("rooms_created")}</span>
                   )}
                 </div>
                 <button
@@ -74,21 +65,20 @@ export default function AutoGroupTab({
                   disabled={loading}
                   style={{ ...s.joinBtn, opacity: loading ? 0.5 : 1 }}
                 >
-                  참가 ({TIER_LABELS[i]})
+                  {t("join_btn")} ({TIER_LABELS[i]})
                 </button>
               </div>
 
               {info.groupAddr !== "0x0000000000000000000000000000000000000000" && (
                 <div style={s.tierDetail}>
                   <div style={s.detailGrid}>
-                    <DetailItem label="현재 인원" value={`${info.memberCount} / 28명`} />
-                    <DetailItem label="카운트다운" value={info.countdownStarted ? "시작됨" : "대기 중"} />
+                    <DetailItem label={t("member_count")} value={`${info.memberCount} / 28${t("people")}`} />
+                    <DetailItem label={t("countdown")} value={info.countdownStarted ? t("countdown_started") : t("waiting")} />
                     {info.countdownStarted && info.enrollmentDeadline && (
-                      <DetailItem label="모집 마감" value={timeLeft(info.enrollmentDeadline)} />
+                      <DetailItem label={t("enroll_close")} value={timeLeft(info.enrollmentDeadline)} />
                     )}
-                    <DetailItem label="방 주소" value={short(info.groupAddr)} />
+                    <DetailItem label={t("room_addr")} value={short(info.groupAddr)} />
                   </div>
-                  {/* 인원 바 */}
                   <div style={s.progressBg}>
                     <div style={{
                       ...s.progressFill,
@@ -96,8 +86,8 @@ export default function AutoGroupTab({
                       background: info.memberCount >= 10 ? "#A8F77E" : "#7EB8F7",
                     }} />
                     <span style={s.progressLabel}>
-                      {info.memberCount}/28명
-                      {info.memberCount >= 10 && " (카운트다운 가능)"}
+                      {info.memberCount}/28{t("people")}
+                      {info.memberCount >= 10 && ` (${t("countdown_possible")})`}
                     </span>
                   </div>
                 </div>
@@ -107,11 +97,10 @@ export default function AutoGroupTab({
         </div>
       )}
 
-      {/* ── 내 방 ── */}
       {subTab === "my" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {myGroups.length === 0 ? (
-            <div style={s.empty}>참여 중인 자동화방이 없습니다.</div>
+            <div style={s.empty}>{t("no_auto_rooms")}</div>
           ) : (
             myGroups.map((g, i) => (
               <div key={i} style={s.myGroupCard}>
@@ -126,17 +115,16 @@ export default function AutoGroupTab({
                 </div>
 
                 <div style={s.detailGrid}>
-                  <DetailItem label="입장순서" value={`${g.joinOrder}번`} />
-                  <DetailItem label="순번" value={g.position > 0 ? `${g.position}번` : "미배정"} />
-                  <DetailItem label="현재 인원" value={`${g.memberCount}명`} />
+                  <DetailItem label={t("join_order")} value={`${g.joinOrder}${t("num_suffix")}`} />
+                  <DetailItem label={t("position")} value={g.position > 0 ? `${g.position}${t("num_suffix")}` : t("unassigned")} />
+                  <DetailItem label={t("member_count")} value={`${g.memberCount}${t("people")}`} />
                 </div>
 
-                {/* 순번 선택 (POSITION_SELECTION 상태) */}
                 {g.state === 1 && g.position === 0 && (
                   <div style={s.actionRow}>
                     <input
                       type="number" min="1" max={g.memberCount}
-                      placeholder="순번 입력"
+                      placeholder={t("pos_placeholder")}
                       value={posInput[g.groupAddr] || ""}
                       onChange={e => setPosInput(p => ({ ...p, [g.groupAddr]: e.target.value }))}
                       style={s.input}
@@ -146,19 +134,18 @@ export default function AutoGroupTab({
                       disabled={loading || !posInput[g.groupAddr]}
                       style={s.actionBtn}
                     >
-                      순번 선택
+                      {t("select_pos")}
                     </button>
                   </div>
                 )}
 
-                {/* 납입 (ACTIVE 상태) */}
                 {g.state === 2 && (
                   <button
                     onClick={() => contribute(g.groupAddr)}
                     disabled={loading}
                     style={{ ...s.actionBtn, marginTop: 10 }}
                   >
-                    이번 달 납입하기
+                    {t("contribute_btn")}
                   </button>
                 )}
               </div>

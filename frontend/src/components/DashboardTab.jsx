@@ -1,4 +1,5 @@
 import ADDRESSES from "../deployedAddresses.json";
+import { useLang } from "../i18n/LanguageContext.jsx";
 
 const STATE_COLOR = {
   ENROLLING: "#7EB8F7", POSITION_SELECTION: "#F7C97E",
@@ -10,85 +11,83 @@ export default function DashboardTab({
   mintHHUSD, contracts, onTx, loading, refreshBalances,
   autoMyGroups, customMyGroups, platformStats, fmt, short,
 }) {
+  const { t } = useLang();
+
   const allMyGroups = [
-    ...autoMyGroups.map(g => ({ ...g, type: "자동화방" })),
-    ...customMyGroups.map(g => ({ ...g, type: "커스텀방" })),
+    ...autoMyGroups.map(g => ({ ...g, type: t("tab_auto") })),
+    ...customMyGroups.map(g => ({ ...g, type: t("tab_custom") })),
   ];
 
   const ps = platformStats || {};
 
   return (
     <div>
-      {/* 플랫폼 전체 통계 */}
       <div style={s.platformBanner}>
-        <div style={s.platformTitle}>HH Finance 플랫폼 현황</div>
+        <div style={s.platformTitle}>{t("platform_status")}</div>
         <div style={s.statsRow}>
           <StatItem
             icon="👥"
-            label="총 참여 유저 수"
-            value={(ps.totalUsers || 0).toLocaleString() + "명"}
+            label={t("total_users")}
+            value={(ps.totalUsers || 0).toLocaleString() + t("people")}
             color="#7EB8F7"
           />
           <div style={s.statDivider} />
           <StatItem
             icon="💰"
-            label="총 계 금액"
+            label={t("total_pool")}
             value={(ps.totalPool || "0") + " HHUSD"}
             color="#F7C97E"
-            sub="진행 중인 모든 방 합산"
+            sub={t("all_rooms_combined")}
           />
           <div style={s.statDivider} />
           <StatItem
             icon="🏠"
-            label="총 방 수"
-            value={(ps.totalGroups || 0) + "개"}
+            label={t("total_rooms")}
+            value={(ps.totalGroups || 0) + t("rooms_unit")}
             color="#A8F77E"
           />
           <div style={s.statDivider} />
           <StatItem
             icon="⚡"
-            label="진행 중인 방"
-            value={(ps.activeGroups || 0) + "개"}
+            label={t("active_rooms")}
+            value={(ps.activeGroups || 0) + t("rooms_unit")}
             color="#C8A8F7"
-            sub="ACTIVE 상태"
+            sub="ACTIVE"
           />
         </div>
       </div>
 
-      <div style={s.sectionTitle}>내 자산 현황</div>
+      <div style={s.sectionTitle}>{t("my_assets")}</div>
 
-      {/* 자산 카드 */}
       <div style={s.cardRow}>
-        <Card title="HHUSD 잔액" value={`${fmt(hhusdBal)} HHUSD`} color="#7EB8F7" />
-        <Card title="잠긴 담보 총액" value={`${fmt(lockedCol)} HHUSD`} color="#F7C97E"
-          sub="모든 그룹 합산" />
-        <Card title="MockUSDT 잔액" value={`${fmt(usdtBal)} USDT`} color="#A8F77E" />
-        <Card title="참여 중인 방" value={allMyGroups.length + "개"} color="#C8A8F7" />
+        <Card title={t("hhusd_balance")} value={`${fmt(hhusdBal)} HHUSD`} color="#7EB8F7" />
+        <Card title={t("locked_collateral")} value={`${fmt(lockedCol)} HHUSD`} color="#F7C97E"
+          sub={t("all_groups_combined")} />
+        <Card title={t("usdt_balance")} value={`${fmt(usdtBal)} USDT`} color="#A8F77E" />
+        <Card title={t("my_rooms_count")} value={allMyGroups.length + t("rooms_unit")} color="#C8A8F7" />
       </div>
 
-      {/* 테스트용 민팅 */}
       {ADDRESSES.network === "hardhat" && (
         <div style={s.section}>
-          <div style={s.sectionTitle}>🧪 테스트 토큰 발행 (로컬넷 전용)</div>
+          <div style={s.sectionTitle}>🧪 {t("test_mint_title")}</div>
           <div style={{ display: "flex", gap: 12 }}>
             <button onClick={() => mintHHUSD(1000)} disabled={loading} style={s.btn}>
-              USDT 1,000 발행
+              {t("mint_1000")}
             </button>
             <button onClick={() => mintHHUSD(5000)} disabled={loading} style={s.btn}>
-              USDT 5,000 발행
+              {t("mint_5000")}
             </button>
           </div>
           <div style={{ color: "#555", fontSize: 12, marginTop: 8 }}>
-            * BSC 메인넷에서는 실제 USDT 필요
+            {t("test_mint_note")}
           </div>
         </div>
       )}
 
-      {/* 내 그룹 목록 */}
       <div style={s.section}>
-        <div style={s.sectionTitle}>내가 참여 중인 방</div>
+        <div style={s.sectionTitle}>{t("my_rooms_section")}</div>
         {allMyGroups.length === 0 ? (
-          <div style={s.empty}>아직 참여 중인 방이 없습니다. 자동화방 또는 커스텀방에 참가하세요.</div>
+          <div style={s.empty}>{t("no_rooms_yet")}</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {allMyGroups.map((g, i) => (
@@ -114,8 +113,8 @@ export default function DashboardTab({
                   </span>
                 </div>
                 <div style={{ display: "flex", gap: 20, fontSize: 13, color: "#888" }}>
-                  <span>입장순서 {g.joinOrder}번</span>
-                  {g.position > 0 && <span>📍 순번 {g.position}번</span>}
+                  <span>{t("join_order")} {g.joinOrder}{t("num_suffix")}</span>
+                  {g.position > 0 && <span>📍 {t("position")} {g.position}{t("num_suffix")}</span>}
                   <span style={{ color: "#555", fontSize: 11 }}>{short(g.groupAddr)}</span>
                 </div>
               </div>
@@ -124,9 +123,8 @@ export default function DashboardTab({
         )}
       </div>
 
-      {/* 컨트랙트 주소 */}
       <div style={s.section}>
-        <div style={s.sectionTitle}>📋 컨트랙트 주소</div>
+        <div style={s.sectionTitle}>📋 {t("contract_addresses")}</div>
         <div style={s.addrGrid}>
           {Object.entries(ADDRESSES.contracts).map(([name, addr]) => (
             <div key={name} style={s.addrRow}>

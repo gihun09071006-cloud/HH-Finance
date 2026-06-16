@@ -1,11 +1,10 @@
 import { useState } from "react";
+import { useLang } from "../i18n/LanguageContext.jsx";
 
 const STATE_COLOR = {
   ENROLLING: "#7EB8F7", POSITION_SELECTION: "#F7C97E",
   ACTIVE: "#A8F77E", COMPLETED: "#888", CANCELLED: "#F77E7E",
 };
-
-const STATUS_LABEL = ["정상", "경고", "패널티", "제거됨"];
 
 export default function CustomGroupTab({
   account, loading, fmt, short,
@@ -13,7 +12,8 @@ export default function CustomGroupTab({
   createGroup, joinGroup, kickMember, closeEnrollment, cancelGroup,
   selectPosition, contribute, refresh,
 }) {
-  const [subTab, setSubTab] = useState("list");  // "list" | "create" | "my"
+  const { t } = useLang();
+  const [subTab, setSubTab] = useState("list");
   const [posInput,  setPosInput]  = useState({});
   const [kickInput, setKickInput] = useState({});
   const [form, setForm] = useState({
@@ -34,10 +34,15 @@ export default function CustomGroupTab({
   const timeLeft = (ts) => {
     if (!ts) return "";
     const diff = ts - Math.floor(Date.now() / 1000);
-    if (diff <= 0) return "마감됨";
+    if (diff <= 0) return t("closed");
     const h = Math.floor(diff / 3600);
     const m = Math.floor((diff % 3600) / 60);
-    return `${h}시간 ${m}분 남음`;
+    return `${h}${t("hours")} ${m}${t("minutes")} ${t("remaining")}`;
+  };
+
+  const statusLabel = (s) => {
+    const labels = [t("status_normal"), t("status_warning"), t("status_penalty"), t("status_removed")];
+    return labels[s] || "-";
   };
 
   const handleCreate = async () => {
@@ -53,33 +58,28 @@ export default function CustomGroupTab({
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={s.pageTitle}>커스텀방</div>
-        <button onClick={refresh} disabled={loading} style={s.refreshBtn}>↻ 새로고침</button>
+        <div style={s.pageTitle}>{t("tab_custom")}</div>
+        <button onClick={refresh} disabled={loading} style={s.refreshBtn}>↻ {t("refresh")}</button>
       </div>
 
-      <div style={s.desc}>
-        계장(방장)이 직접 인원, 기여금, 납입 기한을 설정하는 계모임 방입니다.
-        방 생성 시 담보가 선 디파짓되며, 계장이 멤버를 직접 관리할 수 있습니다.
-      </div>
+      <div style={s.desc}>{t("custom_desc")}</div>
 
-      {/* 서브탭 */}
       <div style={s.subTabBar}>
         <button onClick={() => setSubTab("list")} style={{ ...s.subTab, ...(subTab === "list" ? s.subTabActive : {}) }}>
-          전체 방 ({allGroups.length})
+          {t("all_rooms")} ({allGroups.length})
         </button>
         <button onClick={() => setSubTab("create")} style={{ ...s.subTab, ...(subTab === "create" ? s.subTabActive : {}) }}>
-          방 만들기
+          {t("create_room")}
         </button>
         <button onClick={() => setSubTab("my")} style={{ ...s.subTab, ...(subTab === "my" ? s.subTabActive : {}) }}>
-          내 방 ({myGroups.length})
+          {t("my_room_tab")} ({myGroups.length})
         </button>
       </div>
 
-      {/* ── 전체 방 목록 ── */}
       {subTab === "list" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {allGroups.length === 0 ? (
-            <div style={s.empty}>생성된 방이 없습니다. 방을 먼저 만들어보세요.</div>
+            <div style={s.empty}>{t("no_custom_rooms_list")}</div>
           ) : (
             allGroups.map((g, i) => {
               const isMe = g.organizer?.toLowerCase() === account?.toLowerCase();
@@ -92,14 +92,14 @@ export default function CustomGroupTab({
                         {g.stateName}
                       </span>
                       <span style={{ color: "#eee", fontWeight: 600, fontSize: 15 }}>
-                        {fmt(g.contributionAmount)} HHUSD/회차
+                        {fmt(g.contributionAmount)} HHUSD/{t("cycle")}
                       </span>
                       <span style={{ color: "#666", fontSize: 12 }}>
-                        최대 {g.maxMembers}명
+                        {t("max")} {g.maxMembers}{t("people")}
                       </span>
                       {isMe && (
                         <span style={{ ...s.badge, background: "#2a1a4a", color: "#C8A8F7" }}>
-                          내가 계장
+                          {t("im_organizer")}
                         </span>
                       )}
                     </div>
@@ -109,31 +109,30 @@ export default function CustomGroupTab({
                         disabled={loading}
                         style={s.joinBtn}
                       >
-                        참가
+                        {t("join_btn")}
                       </button>
                     )}
                     {alreadyIn && (
-                      <span style={{ color: "#A8F77E", fontSize: 13 }}>✓ 참가 중</span>
+                      <span style={{ color: "#A8F77E", fontSize: 13 }}>✓ {t("participating")}</span>
                     )}
                   </div>
 
                   <div style={s.detailGrid}>
-                    <DetailItem label="현재 인원" value={`${g.memberCount} / ${g.maxMembers}명`} />
-                    <DetailItem label="계장" value={short(g.organizer)} />
+                    <DetailItem label={t("member_count")} value={`${g.memberCount} / ${g.maxMembers}${t("people")}`} />
+                    <DetailItem label={t("organizer")} value={short(g.organizer)} />
                     {g.state === 0 && g.enrollmentDeadline && (
-                      <DetailItem label="모집 마감" value={timeLeft(g.enrollmentDeadline)} />
+                      <DetailItem label={t("enroll_close")} value={timeLeft(g.enrollmentDeadline)} />
                     )}
-                    <DetailItem label="방 주소" value={short(g.groupAddr)} />
+                    <DetailItem label={t("room_addr")} value={short(g.groupAddr)} />
                   </div>
 
-                  {/* 인원 바 */}
                   <div style={s.progressBg}>
                     <div style={{
                       ...s.progressFill,
                       width: `${(g.memberCount / g.maxMembers) * 100}%`,
                       background: g.memberCount >= g.maxMembers ? "#F7C97E" : "#7EB8F7",
                     }} />
-                    <span style={s.progressLabel}>{g.memberCount}/{g.maxMembers}명</span>
+                    <span style={s.progressLabel}>{g.memberCount}/{g.maxMembers}{t("people")}</span>
                   </div>
                 </div>
               );
@@ -142,57 +141,53 @@ export default function CustomGroupTab({
         </div>
       )}
 
-      {/* ── 방 만들기 ── */}
       {subTab === "create" && (
         <div style={s.createForm}>
-          <div style={s.formTitle}>새 계모임 방 만들기</div>
-          <div style={s.formDesc}>
-            방을 만들면 계장으로서 담보가 즉시 잠깁니다 (담보 선 디파짓).
-          </div>
+          <div style={s.formTitle}>{t("create_form_title")}</div>
+          <div style={s.formDesc}>{t("create_form_desc")}</div>
 
           <div style={s.formGrid}>
-            <FormField label="사이클당 기여금 (HHUSD)" desc="매 회차 납입할 금액">
+            <FormField label={t("form_contribution")} desc={t("form_contribution_desc")}>
               <input type="number" min="1" value={form.contribution} onChange={setF("contribution")}
-                style={s.input} placeholder="예: 50" />
+                style={s.input} placeholder="50" />
             </FormField>
 
-            <FormField label="최대 인원" desc="2 ~ 29명">
+            <FormField label={t("form_max_members")} desc={t("form_max_members_desc")}>
               <input type="number" min="2" max="29" value={form.maxMembers} onChange={setF("maxMembers")}
-                style={s.input} placeholder="예: 10" />
+                style={s.input} placeholder="10" />
             </FormField>
 
-            <FormField label="납입 기한 (일)" desc="각 회차 납입 기한">
+            <FormField label={t("form_cycle_days")} desc={t("form_cycle_days_desc")}>
               <input type="number" min="1" value={form.cycleDays} onChange={setF("cycleDays")}
-                style={s.input} placeholder="예: 7" />
+                style={s.input} placeholder="7" />
             </FormField>
 
-            <FormField label="모집 기간 (시간)" desc="방 오픈 후 참가 가능 시간">
+            <FormField label={t("form_enroll_hours")} desc={t("form_enroll_hours_desc")}>
               <input type="number" min="1" value={form.enrollHours} onChange={setF("enrollHours")}
-                style={s.input} placeholder="예: 48" />
+                style={s.input} placeholder="48" />
             </FormField>
           </div>
 
           <div style={s.collateralPreview}>
-            <span style={{ color: "#888", fontSize: 13 }}>필요 담보 (140%):</span>
+            <span style={{ color: "#888", fontSize: 13 }}>{t("required_collateral")}:</span>
             <span style={{ color: "#F7C97E", fontSize: 18, fontWeight: 700, marginLeft: 12 }}>
               {requiredCollateral()} HHUSD
             </span>
             <span style={{ color: "#555", fontSize: 12, marginLeft: 8 }}>
-              ({form.contribution} × {form.maxMembers}명 × 140%)
+              ({form.contribution} × {form.maxMembers}{t("people")} × 140%)
             </span>
           </div>
 
           <button onClick={handleCreate} disabled={loading} style={s.createBtn}>
-            {loading ? "생성 중..." : "방 만들기 + 계장으로 참가"}
+            {loading ? t("creating") : t("create_and_join")}
           </button>
         </div>
       )}
 
-      {/* ── 내 방 ── */}
       {subTab === "my" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {myGroups.length === 0 ? (
-            <div style={s.empty}>참여 중인 커스텀방이 없습니다.</div>
+            <div style={s.empty}>{t("no_custom_rooms")}</div>
           ) : (
             myGroups.map((g, i) => (
               <div key={i} style={s.myCard}>
@@ -202,29 +197,28 @@ export default function CustomGroupTab({
                       {g.stateName}
                     </span>
                     <span style={{ color: "#eee", fontWeight: 600 }}>
-                      {fmt(g.contributionAmount)} HHUSD/회차
+                      {fmt(g.contributionAmount)} HHUSD/{t("cycle")}
                     </span>
                     {g.isOrganizer && (
-                      <span style={{ ...s.badge, background: "#2a1a4a", color: "#C8A8F7" }}>계장</span>
+                      <span style={{ ...s.badge, background: "#2a1a4a", color: "#C8A8F7" }}>{t("organizer")}</span>
                     )}
                   </div>
                 </div>
 
                 <div style={s.detailGrid}>
-                  <DetailItem label="입장순서" value={`${g.joinOrder}번`} />
-                  <DetailItem label="순번" value={g.position > 0 ? `${g.position}번` : "미배정"} />
-                  <DetailItem label="상태" value={STATUS_LABEL[g.status] || "-"} />
-                  <DetailItem label="인원" value={`${g.memberCount}/${g.maxMembers}명`} />
+                  <DetailItem label={t("join_order")} value={`${g.joinOrder}${t("num_suffix")}`} />
+                  <DetailItem label={t("position")} value={g.position > 0 ? `${g.position}${t("num_suffix")}` : t("unassigned")} />
+                  <DetailItem label={t("status")} value={statusLabel(g.status)} />
+                  <DetailItem label={t("member_count")} value={`${g.memberCount}/${g.maxMembers}${t("people")}`} />
                 </div>
 
-                {/* 계장 관리 버튼 */}
                 {g.isOrganizer && g.state === 0 && (
                   <div style={s.actionRow}>
                     <button onClick={() => closeEnrollment(g.groupAddr)} disabled={loading} style={s.orangeBtn}>
-                      조기 모집 마감
+                      {t("early_close")}
                     </button>
                     <input
-                      placeholder="강퇴할 주소"
+                      placeholder={t("kick_placeholder")}
                       value={kickInput[g.groupAddr] || ""}
                       onChange={e => setKickInput(k => ({ ...k, [g.groupAddr]: e.target.value }))}
                       style={{ ...s.input, flex: 1 }}
@@ -234,24 +228,23 @@ export default function CustomGroupTab({
                       disabled={loading || !kickInput[g.groupAddr]}
                       style={s.redBtn}
                     >
-                      강퇴
+                      {t("kick")}
                     </button>
                     <button
-                      onClick={() => cancelGroup(g.groupAddr, "계장 취소")}
+                      onClick={() => cancelGroup(g.groupAddr, "organizer cancel")}
                       disabled={loading}
                       style={s.redBtn}
                     >
-                      방 취소
+                      {t("cancel_room")}
                     </button>
                   </div>
                 )}
 
-                {/* 순번 선택 */}
                 {g.state === 1 && g.position === 0 && (
                   <div style={s.actionRow}>
                     <input
                       type="number" min="1" max={g.maxMembers}
-                      placeholder="순번 입력"
+                      placeholder={t("pos_placeholder")}
                       value={posInput[g.groupAddr] || ""}
                       onChange={e => setPosInput(p => ({ ...p, [g.groupAddr]: e.target.value }))}
                       style={s.input}
@@ -261,19 +254,18 @@ export default function CustomGroupTab({
                       disabled={loading || !posInput[g.groupAddr]}
                       style={s.greenBtn}
                     >
-                      순번 선택
+                      {t("select_pos")}
                     </button>
                   </div>
                 )}
 
-                {/* 납입 */}
                 {g.state === 2 && (
                   <button
                     onClick={() => contribute(g.groupAddr, g.contributionAmount)}
                     disabled={loading}
                     style={{ ...s.greenBtn, alignSelf: "flex-start" }}
                   >
-                    이번 회차 납입
+                    {t("contribute_btn")}
                   </button>
                 )}
               </div>
