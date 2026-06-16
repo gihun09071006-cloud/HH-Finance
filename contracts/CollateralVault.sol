@@ -8,7 +8,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 interface IHHUSD {
     function burn(address user, uint256 amount) external;
+    function mint(address to, uint256 amount) external;
     function balanceOf(address user) external view returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
 }
 
 /**
@@ -153,10 +155,12 @@ contract CollateralVault is
         groupTotalCollateral[groupId]   -= amount;
 
         if (recipient == address(0)) {
-            // Burn slashed collateral
             hhusdToken.burn(user, amount);
+        } else {
+            // 유저 지갑에서 소각 후 recipient에게 새로 발행 (논리적 잠금 → 실물 이전)
+            hhusdToken.burn(user, amount);
+            hhusdToken.mint(recipient, amount);
         }
-        // If recipient != address(0), the group contract handles redistribution
 
         emit CollateralSlashed(user, groupId, amount, recipient);
     }

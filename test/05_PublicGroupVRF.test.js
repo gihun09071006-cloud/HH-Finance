@@ -4,7 +4,7 @@ const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("PublicGroupVRF", function () {
   let group, vault, hhusd, mockVRF;
-  let admin, users;
+  let admin, devWallet, eventWallet, users;
 
   const GROUP_ID        = 1n;
   const CONTRIBUTION    = ethers.parseEther("100");
@@ -23,11 +23,13 @@ describe("PublicGroupVRF", function () {
       COLLATERAL_BP,
       await vault.getAddress(),
       await mockVRF.getAddress(),
+      devWallet.address,
+      eventWallet.address,
     ]);
   }
 
   beforeEach(async () => {
-    [admin, ...users] = await ethers.getSigners(); // users[0]~[19] = 20명
+    [admin, devWallet, eventWallet, ...users] = await ethers.getSigners();
 
     // HHUSD 배포
     const HHUSD = await ethers.getContractFactory("HHUSD");
@@ -50,6 +52,7 @@ describe("PublicGroupVRF", function () {
     const MINTER = await hhusd.MINTER_ROLE();
     const BURNER = await hhusd.BURNER_ROLE();
     await hhusd.connect(admin).grantRole(MINTER, admin.address);
+    await hhusd.connect(admin).grantRole(MINTER, await vault.getAddress());
     await hhusd.connect(admin).grantRole(BURNER, await vault.getAddress());
 
     // GROUP_ROLE은 그룹 컨트랙트 배포 후 부여
@@ -346,10 +349,12 @@ describe("PublicGroupVRF", function () {
     });
 
     it("제거된 멤버는 contribute 불가", async () => {
-      // 3번 미납 처리
-      await group.warningMissedPayment(users[0].address);
-      await group.warningMissedPayment(users[0].address);
-      await group.warningMissedPayment(users[0].address);
+      // 담보 소진될 때까지 미납 처리
+      let m = await group.getMember(users[0].address);
+      while (m.status !== 3n) {
+        await group.warningMissedPayment(users[0].address);
+        m = await group.getMember(users[0].address);
+      }
       await expect(group.connect(users[0]).contribute())
         .to.be.revertedWithCustomError(group, "NotMember");
     });
@@ -399,12 +404,13 @@ describe("PublicGroupVRF", function () {
         .to.be.lt(collateralBefore);
     });
 
-    it("3차 경고 → REMOVED + 잔여 담보 전액 슬래시", async () => {
-      await group.warningMissedPayment(users[0].address);
-      await group.warningMissedPayment(users[0].address);
-      await group.warningMissedPayment(users[0].address);
-
-      const m = await group.getMember(users[0].address);
+    it("담보 소진 → REMOVED + 잔여 담보 devWallet으로 귀속", async () => {
+      // 담보 1400 HHUSD / 기여금 100 → 14번 차감하면 0 or REMOVED
+      let m = await group.getMember(users[0].address);
+      while (m.status !== 3n) {
+        await group.warningMissedPayment(users[0].address);
+        m = await group.getMember(users[0].address);
+      }
       expect(m.status).to.equal(3); // REMOVED
       expect(await vault.getGroupCollateral(GROUP_ID, users[0].address)).to.equal(0);
     });

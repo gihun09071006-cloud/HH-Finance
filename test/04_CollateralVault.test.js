@@ -28,6 +28,7 @@ describe("CollateralVault", function () {
     const MINTER_ROLE = await hhusd.MINTER_ROLE();
     const BURNER_ROLE = await hhusd.BURNER_ROLE();
     await hhusd.connect(admin).grantRole(MINTER_ROLE, admin.address);
+    await hhusd.connect(admin).grantRole(MINTER_ROLE, await vault.getAddress());
     await hhusd.connect(admin).grantRole(BURNER_ROLE, await vault.getAddress());
 
     // vault에 GROUP_ROLE 부여
@@ -158,14 +159,18 @@ describe("CollateralVault", function () {
       expect(await vault.lockedCollateral(user.address)).to.equal(0);
     });
 
-    it("recipient 있으면 담보만 해제 (소각 없음)", async () => {
+    it("recipient 있으면 소각 후 recipient에게 발행 (totalSupply 유지)", async () => {
       const totalSupplyBefore = await hhusd.totalSupply();
+      const recipientBefore   = await hhusd.balanceOf(slashRecipient.address);
+
       await vault
         .connect(groupContract)
         .slashCollateral(user.address, 1, COLLATERAL, slashRecipient.address);
 
-      // 소각 없음 - totalSupply 유지
+      // burn → mint이므로 totalSupply 불변
       expect(await hhusd.totalSupply()).to.equal(totalSupplyBefore);
+      // recipient에게 COLLATERAL만큼 추가 지급
+      expect(await hhusd.balanceOf(slashRecipient.address)).to.equal(recipientBefore + COLLATERAL);
       expect(await vault.lockedCollateral(user.address)).to.equal(0);
     });
 

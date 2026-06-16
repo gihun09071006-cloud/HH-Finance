@@ -62,7 +62,7 @@ contract PublicGroupVRF is ReentrancyGuard {
         uint8   position;
         uint256 collateral;
         MemberStatus status;
-        uint8   missedPayments;
+        uint16  missedPayments;
         bool    hasReceivedPayout;
     }
 
@@ -77,12 +77,21 @@ contract PublicGroupVRF is ReentrancyGuard {
     ICollateralVault        public immutable vault;
     IVRFPositionAssigner    public immutable vrfAssigner;
     address                 public immutable factory;
+    address                 public immutable devWallet;
+    address                 public immutable eventWallet;  // 패널티 70% 적립 지갑
 
     uint256 public constant MIN_MEMBERS          = 10;
     uint256 public constant MAX_MEMBERS          = 20;
     uint256 public constant ENROLLMENT_DURATION  = 24 hours;
     uint256 public constant SELECTION_DURATION   = 12 hours;
-    uint256 public constant VRF_TIMEOUT          = 1 hours; // if no callback in 1h → retry
+    uint256 public constant VRF_TIMEOUT          = 1 hours;
+
+    // 패널티 분배 비율 (basis points, 합계 10000)
+    uint256 public constant PENALTY_DEV_BP       = 3000;   // 30% → 개발자
+    uint256 public constant PENALTY_EVENT_BP     = 7000;   // 70% → 이벤트 지갑
+
+    // 총 사이클의 80% 이상 미납 시 잔여 담보 몰수 가능
+    uint256 public constant SLASH_THRESHOLD_BP   = 8000;   // 80%
 
     // ─── Mutable State ───────────────────────────────────────────────────────
 
@@ -118,6 +127,19 @@ contract PublicGroupVRF is ReentrancyGuard {
     event GroupCompleted();
     event GroupCancelled(string reason);
 
+    /// @notice 미납 횟수가 80% 임계치에 도달하면 발생 — 프론트/앱에서 경고 표시용
+    event CollateralAtRisk(
+        address indexed user,
+        uint256 missedCount,
+        uint256 totalCycles,
+        uint256 collateralRemaining,
+        string  message
+    );
+    /// @notice 유저가 담보를 추가 충전했을 때
+    event CollateralToppedUp(address indexed user, uint256 addedAmount, uint256 newTotal);
+    /// @notice 패널티 담보 분배 완료 (30% dev / 70% event)
+    event PenaltyDistributed(address indexed user, uint256 devAmount, uint256 eventAmount);
+
     // ─── Errors ──────────────────────────────────────────────────────────────
 
     error NotInState(GroupState required, GroupState current);
@@ -147,8 +169,12 @@ contract PublicGroupVRF is ReentrancyGuard {
         uint256 _cycleIntervalSeconds,
         uint256 _collateralRatioBP,
         address _vault,
-        address _vrfAssigner
+        address _vrfAssigner,
+        address _devWallet,
+        address _eventWallet
     ) {
+        require(_devWallet   != address(0), "devWallet required");
+        require(_eventWallet != address(0), "eventWallet required");
         groupId              = _groupId;
         contributionAmount   = _contributionAmount;
         totalCycles          = _totalCycles;
@@ -157,6 +183,8 @@ contract PublicGroupVRF is ReentrancyGuard {
         vault                = ICollateralVault(_vault);
         vrfAssigner          = IVRFPositionAssigner(_vrfAssigner);
         factory              = msg.sender;
+        devWallet            = _devWallet;
+        eventWallet          = _eventWallet;
 
         state = GroupState.ENROLLING;
         enrollmentDeadline = block.timestamp + ENROLLMENT_DURATION;
@@ -327,26 +355,87 @@ contract PublicGroupVRF is ReentrancyGuard {
         }
     }
 
+    /**
+     * @notice 미납 유저 처리: 담보에서 기여금 자동 차감 + 패널티 분배
+     *
+     * 흐름:
+     *   1. 담보 충분 → contributionAmount 차감 (30% dev / 70% event 분배)
+     *      - missedPayments가 총 사이클의 80% 이상이면 CollateralAtRisk 이벤트 발생
+     *   2. 담보 부족 → 잔액 전부 패널티 분배 후 REMOVED
+     */
     function warningMissedPayment(address user) external inState(GroupState.ACTIVE) {
         Member storage m = members[user];
-        if (m.wallet == address(0)) revert NotMember();
+        if (m.wallet == address(0) || m.status == MemberStatus.REMOVED) revert NotMember();
 
-        if (m.missedPayments == 0) {
-            m.status = MemberStatus.WARNED;
-            m.missedPayments = 1;
-            emit PaymentWarned(user, currentCycle);
-        } else if (m.missedPayments == 1) {
-            m.missedPayments = 2;
-            m.status = MemberStatus.PENALIZED;
-            uint256 slash = _min(contributionAmount, vault.getGroupCollateral(groupId, user));
-            if (slash > 0) vault.slashCollateral(user, groupId, slash, address(0));
-            emit CollateralDeducted(user, currentCycle, slash);
-        } else {
+        uint256 available = vault.getGroupCollateral(groupId, user);
+
+        if (available >= contributionAmount) {
+            _distributePenalty(user, contributionAmount);
+            m.missedPayments++;
+
+            if (m.missedPayments == 1) {
+                m.status = MemberStatus.WARNED;
+                emit PaymentWarned(user, currentCycle);
+            } else {
+                m.status = MemberStatus.PENALIZED;
+            }
+            emit CollateralDeducted(user, currentCycle, contributionAmount);
+
+            // 80% 임계치 도달 시 경고 이벤트 (프론트/앱에서 팝업/알림 표시)
             uint256 remaining = vault.getGroupCollateral(groupId, user);
-            if (remaining > 0) vault.slashCollateral(user, groupId, remaining, address(0));
+            if (uint256(m.missedPayments) * 10000 >= totalCycles * SLASH_THRESHOLD_BP) {
+                emit CollateralAtRisk(
+                    user,
+                    m.missedPayments,
+                    totalCycles,
+                    remaining,
+                    unicode"경고: 총 사이클의 80% 이상 미납되었습니다. 담보를 충전하지 않으면 그룹 완료 시 잔여 담보를 몰수당할 수 있습니다."
+                );
+            }
+        } else {
+            // 담보 부족 → 잔액 패널티 분배 후 제거
+            if (available > 0) _distributePenalty(user, available);
+            m.missedPayments++;
             m.status = MemberStatus.REMOVED;
             emit MemberRemoved(user, currentCycle);
         }
+    }
+
+    /**
+     * @notice 담보 추가 충전 (Top-up)
+     * @dev 미납 이력이 있어도 담보를 재충전할 수 있다.
+     *      HHUSD를 vault에 approve 후 호출해야 함.
+     *      80% 미납 경고를 받은 유저가 담보를 채워 몰수를 피할 수 있다.
+     */
+    function topUpCollateral(uint256 amount) external nonReentrant inState(GroupState.ACTIVE) {
+        Member storage m = members[msg.sender];
+        if (m.wallet == address(0) || m.status == MemberStatus.REMOVED) revert NotMember();
+        require(amount > 0, "Amount must be > 0");
+
+        vault.lockCollateral(msg.sender, groupId, amount);
+        m.collateral += amount;
+
+        uint256 newTotal = vault.getGroupCollateral(groupId, msg.sender);
+        emit CollateralToppedUp(msg.sender, amount, newTotal);
+    }
+
+    /**
+     * @notice 80% 이상 미납 유저의 잔여 담보를 강제 패널티 처리
+     * @dev 그룹 진행 중 개발자가 호출 가능. 심각한 악성 유저에 대한 즉시 조치.
+     */
+    function forceClaimPenaltyCollateral(address user) external inState(GroupState.ACTIVE) {
+        require(msg.sender == devWallet, "Only devWallet");
+        Member storage m = members[user];
+        if (m.wallet == address(0) || m.status == MemberStatus.REMOVED) revert NotMember();
+        require(
+            uint256(m.missedPayments) * 10000 >= totalCycles * SLASH_THRESHOLD_BP,
+            "Threshold not reached"
+        );
+
+        uint256 remaining = vault.getGroupCollateral(groupId, user);
+        if (remaining > 0) _distributePenalty(user, remaining);
+        m.status = MemberStatus.REMOVED;
+        emit MemberRemoved(user, currentCycle);
     }
 
     // ─── Internal Helpers ────────────────────────────────────────────────────
@@ -416,12 +505,32 @@ contract PublicGroupVRF is ReentrancyGuard {
         state = GroupState.COMPLETED;
         for (uint256 i = 0; i < memberList.length; i++) {
             address m = memberList[i];
-            if (members[m].status != MemberStatus.REMOVED) {
-                uint256 locked = vault.getGroupCollateral(groupId, m);
-                if (locked > 0) vault.unlockCollateral(m, groupId, locked);
+            uint256 locked = vault.getGroupCollateral(groupId, m);
+            if (locked == 0) continue;
+
+            if (members[m].missedPayments == 0) {
+                // 성실 납부 유저 → 담보 전액 환불
+                vault.unlockCollateral(m, groupId, locked);
+            } else {
+                // 미납 이력 유저 → 잔여 담보 패널티 분배 (30% dev / 70% event)
+                _distributePenalty(m, locked);
             }
         }
         emit GroupCompleted();
+    }
+
+    /**
+     * @notice 패널티 담보를 30% dev / 70% event 지갑으로 분배
+     */
+    function _distributePenalty(address user, uint256 amount) internal {
+        if (amount == 0) return;
+        uint256 devAmount   = (amount * PENALTY_DEV_BP) / 10000;
+        uint256 eventAmount = amount - devAmount;
+
+        if (devAmount > 0)   vault.slashCollateral(user, groupId, devAmount,   devWallet);
+        if (eventAmount > 0) vault.slashCollateral(user, groupId, eventAmount, eventWallet);
+
+        emit PenaltyDistributed(user, devAmount, eventAmount);
     }
 
     function _cancelGroup(string memory reason) internal {
