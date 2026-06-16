@@ -3,7 +3,11 @@ require("@nomicfoundation/hardhat-chai-matchers");
 require("@openzeppelin/hardhat-upgrades");
 require("solidity-coverage");
 require("@nomicfoundation/hardhat-verify");
-require("dotenv").config();
+
+// dotenv@17 = dotenvx (암호화 이슈) → PowerShell 환경변수 직접 사용
+try {
+  require("dotenv").config({ processEnv: {} }); // env 파일 읽되 process.env는 덮어쓰지 않음
+} catch (e) {}
 
 const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY;
 const accounts     = DEPLOYER_KEY ? [DEPLOYER_KEY] : [];
