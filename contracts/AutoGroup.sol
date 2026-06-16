@@ -87,7 +87,8 @@ contract AutoGroup is ReentrancyGuard {
     uint256 public currentCycle;
     uint256 public cycleStartTime;
 
-    address public keeper;  // warningMissedPayment 호출 권한
+    address public keeper;    // warningMissedPayment 호출 권한
+    address public factory_;  // AutoGroupFactory — joinFor 호출 권한
 
     address[]              public memberList;   // 입장 순서 배열
     mapping(address => Member) public members;
@@ -127,6 +128,7 @@ contract AutoGroup is ReentrancyGuard {
     error PositionOutOfRange(uint8 pos, uint256 max);
     error AlreadySelectedPosition();
     error Unauthorized();
+    error NotFactory();
 
     // ─── Modifiers ───────────────────────────────────────────────────────────
 
@@ -167,11 +169,12 @@ contract AutoGroup is ReentrancyGuard {
         devWallet            = _devWallet;
         eventWallet          = _eventWallet;
         keeper               = _devWallet;
+        factory_             = msg.sender;  // 배포한 Factory 주소 (EOA 배포 시 EOA)
 
         state = GroupState.ENROLLING;
     }
 
-    // ─── Keeper 관리 ─────────────────────────────────────────────────────────
+    // ─── Keeper / Factory 관리 ────────────────────────────────────────────────
 
     function setKeeper(address newKeeper) external {
         if (msg.sender != devWallet) revert Unauthorized();
@@ -215,6 +218,34 @@ contract AutoGroup is ReentrancyGuard {
         emit MemberJoined(msg.sender, order, block.timestamp);
 
         // 10번째 멤버 입장 시 카운트다운 자동 시작
+        if (!countdownStarted && memberList.length == MIN_MEMBERS) {
+            countdownStarted   = true;
+            enrollmentDeadline = block.timestamp + COUNTDOWN_DURATION;
+            emit CountdownStarted(enrollmentDeadline);
+        }
+    }
+
+    /**
+     * @notice Factory 전용 — 유저 대신 참가 처리
+     * @dev Factory.join(tier)이 msg.sender(유저) 대신 호출
+     */
+    function joinFor(address user) external nonReentrant inState(GroupState.ENROLLING) {
+        if (msg.sender != factory_) revert NotFactory();
+        if (memberList.length >= totalCycles) revert EnrollmentFull();
+        if (members[user].wallet != address(0)) revert AlreadyMember();
+        if (countdownStarted && block.timestamp > enrollmentDeadline) revert EnrollmentClosed_();
+
+        uint256 required = vault.getRequiredCollateral(contributionAmount, totalCycles, collateralRatioBP);
+        vault.lockCollateral(user, groupId, required);
+
+        uint256 order = memberList.length + 1;
+        members[user] = Member({
+            wallet: user, joinTime: block.timestamp, joinOrder: order,
+            position: 0, status: MemberStatus.ACTIVE, missedPayments: 0, hasReceivedPayout: false
+        });
+        memberList.push(user);
+        emit MemberJoined(user, order, block.timestamp);
+
         if (!countdownStarted && memberList.length == MIN_MEMBERS) {
             countdownStarted   = true;
             enrollmentDeadline = block.timestamp + COUNTDOWN_DURATION;
