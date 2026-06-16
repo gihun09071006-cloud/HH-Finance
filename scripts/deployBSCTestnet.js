@@ -38,7 +38,7 @@ async function main() {
   console.log("feeReceiver  :", feeReceiverAddr);
   console.log("-".repeat(60));
 
-  if (balance < ethers.parseEther("0.1")) {
+  if (balance < ethers.parseEther("0.05")) {
     console.warn("⚠  BNB 잔액 부족! BSC 테스트넷 Faucet에서 충전하세요.");
     console.warn("   https://testnet.binance.org/faucet-smart");
     process.exit(1);
