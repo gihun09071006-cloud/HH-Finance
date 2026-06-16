@@ -160,8 +160,8 @@ function AppInner() {
   useEffect(() => { refreshBalances(); }, [refreshBalances]);
 
   // ── 그룹 훅 ──────────────────────────────────────────────────────────────
-  const autoGroup   = useAutoGroup(signer, account, contracts?.vault, contracts?.hhusd, onTx);
-  const customGroup = useCustomGroup(signer, account, contracts?.hhusd, onTx);
+  const autoGroup   = useAutoGroup(signer, account, contracts?.vault, contracts?.hhusd, onTx, refreshBalances);
+  const customGroup = useCustomGroup(signer, account, contracts?.hhusd, onTx, refreshBalances);
 
   useEffect(() => {
     if (account) { autoGroup.refresh(); customGroup.refresh(); }

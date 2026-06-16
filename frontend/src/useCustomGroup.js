@@ -10,7 +10,7 @@ import ADDRESSES          from "./deployedAddresses.json";
 const ADDR = ADDRESSES.contracts;
 const GROUP_STATE = ["ENROLLING", "POSITION_SELECTION", "ACTIVE", "COMPLETED", "CANCELLED"];
 
-export function useCustomGroup(signer, account, hhusdContract, onTx) {
+export function useCustomGroup(signer, account, hhusdContract, onTx, refreshBalances) {
   const [allGroups, setAllGroups]   = useState([]);  // GroupInfo[]
   const [openGroups, setOpenGroups] = useState([]);  // ENROLLING만
   const [myGroups, setMyGroups]     = useState([]);  // 내가 속한 방
@@ -55,6 +55,11 @@ export function useCustomGroup(signer, account, hhusdContract, onTx) {
     } catch (e) { console.error("customGroup refresh:", e); }
   }, [factory, account, signer]);
 
+  const _afterTx = async () => {
+    await refresh();
+    if (refreshBalances) await refreshBalances();
+  };
+
   // 방 생성 (계장 = msg.sender)
   const createGroup = async ({ contribution, maxMembers, cycleIntervalDays, enrollmentHours }) => {
     if (!factory) return;
@@ -62,52 +67,50 @@ export function useCustomGroup(signer, account, hhusdContract, onTx) {
     const maxM       = BigInt(maxMembers);
     const cycleWei   = BigInt(cycleIntervalDays) * 24n * 3600n;
     const enrollWei  = BigInt(enrollmentHours)   * 3600n;
-    // CollateralVault는 논리적 잠금 — HHUSD approve 불필요
     await onTx(() => factory.createGroup(contribWei, maxM, cycleWei, enrollWei));
-    await refresh();
+    await _afterTx();
   };
 
   // 기존 방 참가
   const joinGroup = async (groupAddr) => {
     if (!factory) return;
-    // CollateralVault는 논리적 잠금 — HHUSD approve 불필요
     await onTx(() => factory.joinGroup(groupAddr));
-    await refresh();
+    await _afterTx();
   };
 
   // 계장: 강퇴
   const kickMember = async (groupAddr, userAddr) => {
     const g = new ethers.Contract(groupAddr, CUSTOM_GROUP_ABI, signer);
     await onTx(() => g.kickMember(userAddr));
-    await refresh();
+    await _afterTx();
   };
 
   // 계장: 마감
   const closeEnrollment = async (groupAddr) => {
     const g = new ethers.Contract(groupAddr, CUSTOM_GROUP_ABI, signer);
     await onTx(() => g.closeEnrollment());
-    await refresh();
+    await _afterTx();
   };
 
   // 계장: 취소
   const cancelGroup = async (groupAddr, reason) => {
     const g = new ethers.Contract(groupAddr, CUSTOM_GROUP_ABI, signer);
     await onTx(() => g.cancelGroup(reason));
-    await refresh();
+    await _afterTx();
   };
 
   // 순번 선택
   const selectPosition = async (groupAddr, position) => {
     const g = new ethers.Contract(groupAddr, CUSTOM_GROUP_ABI, signer);
     await onTx(() => g.selectPosition(position));
-    await refresh();
+    await _afterTx();
   };
 
   // 납입
   const contribute = async (groupAddr) => {
     const g = new ethers.Contract(groupAddr, CUSTOM_GROUP_ABI, signer);
     await onTx(() => g.contribute());
-    await refresh();
+    await _afterTx();
   };
 
   return {

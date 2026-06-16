@@ -13,7 +13,7 @@ const TIER_AMOUNTS  = [10, 20, 50, 100, 200];
 const TIER_LABELS   = ["10 HHUSD", "20 HHUSD", "50 HHUSD", "100 HHUSD", "200 HHUSD"];
 const GROUP_STATE   = ["ENROLLING", "POSITION_SELECTION", "ACTIVE", "COMPLETED", "CANCELLED"];
 
-export function useAutoGroup(signer, account, vaultContract, hhusdContract, onTx) {
+export function useAutoGroup(signer, account, vaultContract, hhusdContract, onTx, refreshBalances) {
   const [tierStatus, setTierStatus]   = useState(null);   // getAllTierStatus
   const [activeInfos, setActiveInfos] = useState([]);     // 5개 티어 각 활성방 정보
   const [myGroups, setMyGroups]       = useState([]);     // 내가 속한 방들
@@ -73,24 +73,28 @@ export function useAutoGroup(signer, account, vaultContract, hhusdContract, onTx
     } catch (e) { console.error("autoGroup refresh:", e); }
   }, [factory, account, signer]);
 
+  const _afterTx = async () => {
+    await refresh();
+    if (refreshBalances) await refreshBalances();
+  };
+
   // 티어 참가
   const join = async (tierIndex) => {
     if (!factory) return;
-    // CollateralVault 논리적 잠금 — HHUSD approve 불필요
     await onTx(() => factory.join(tierIndex));
-    await refresh();
+    await _afterTx();
   };
 
   const selectPosition = async (groupAddr, position) => {
     const g = new ethers.Contract(groupAddr, AUTO_GROUP_ABI, signer);
     await onTx(() => g.selectPosition(position));
-    await refresh();
+    await _afterTx();
   };
 
   const contribute = async (groupAddr) => {
     const g = new ethers.Contract(groupAddr, AUTO_GROUP_ABI, signer);
     await onTx(() => g.contribute());
-    await refresh();
+    await _afterTx();
   };
 
   return {
