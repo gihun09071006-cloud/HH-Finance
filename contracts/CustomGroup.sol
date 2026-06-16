@@ -69,6 +69,7 @@ contract CustomGroup is ReentrancyGuard {
     address          public immutable organizer;   // 계장
     address          public immutable devWallet;
     address          public immutable eventWallet;
+    address          public immutable factory_;    // CustomGroupFactory 주소
 
     uint256 public constant MIN_MEMBERS        = 2;
     uint256 public constant MAX_MEMBERS        = 29;
@@ -128,6 +129,7 @@ contract CustomGroup is ReentrancyGuard {
     error AlreadySelectedPosition();
     error Unauthorized();
     error NotOrganizer();
+    error NotFactory();
 
     // ─── Modifiers ───────────────────────────────────────────────────────────
 
@@ -159,6 +161,7 @@ contract CustomGroup is ReentrancyGuard {
      * @param _organizer          계장 주소
      * @param _devWallet          개발자 지갑
      * @param _eventWallet        이벤트 지갑
+     * @param _factory            CustomGroupFactory 주소 (address(0) = 팩토리 없이 직접 배포)
      */
     constructor(
         uint256 _groupId,
@@ -170,7 +173,8 @@ contract CustomGroup is ReentrancyGuard {
         address _vault,
         address _organizer,
         address _devWallet,
-        address _eventWallet
+        address _eventWallet,
+        address _factory
     ) {
         require(_vault       != address(0), "vault required");
         require(_organizer   != address(0), "organizer required");
@@ -192,6 +196,7 @@ contract CustomGroup is ReentrancyGuard {
         organizer            = _organizer;
         devWallet            = _devWallet;
         eventWallet          = _eventWallet;
+        factory_             = _factory;
         keeper               = _devWallet;
 
         state = GroupState.ENROLLING;
@@ -231,6 +236,35 @@ contract CustomGroup is ReentrancyGuard {
         memberList.push(msg.sender);
 
         emit MemberJoined(msg.sender, order, block.timestamp);
+    }
+
+    /**
+     * @notice Factory 전용 — 팩토리가 유저 대신 참가 처리
+     */
+    function joinFor(address user) external nonReentrant inState(GroupState.ENROLLING) {
+        if (factory_ == address(0) || msg.sender != factory_) revert NotFactory();
+        if (memberList.length >= maxMembers) revert EnrollmentFull();
+        if (block.timestamp > enrollmentDeadline) revert EnrollmentExpired();
+        if (members[user].wallet != address(0)) revert AlreadyMember();
+
+        uint256 required = vault.getRequiredCollateral(
+            contributionAmount, totalCycles, collateralRatioBP
+        );
+        vault.lockCollateral(user, groupId, required);
+
+        uint256 order = memberList.length + 1;
+        members[user] = Member({
+            wallet:             user,
+            joinTime:           block.timestamp,
+            joinOrder:          order,
+            position:           0,
+            status:             MemberStatus.ACTIVE,
+            missedPayments:     0,
+            hasReceivedPayout:  false
+        });
+        memberList.push(user);
+
+        emit MemberJoined(user, order, block.timestamp);
     }
 
     /**

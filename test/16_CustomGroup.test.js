@@ -38,6 +38,7 @@ describe("CustomGroup 테스트", function () {
       organizer.address,
       devWallet.address,
       eventWallet.address,
+      ethers.ZeroAddress, // factory 없이 직접 배포
     ]);
 
     await hhusd.grantRole(await hhusd.MINTER_ROLE(), admin.address);
@@ -202,6 +203,7 @@ describe("CustomGroup 테스트", function () {
         CYCLE_INTERVAL, COLLATERAL_BP, ENROLL_DURATION,
         await vault.getAddress(),
         organizer.address, devWallet.address, eventWallet.address,
+        ethers.ZeroAddress,
       ])).to.be.revertedWith("maxMembers: 2~29");
     });
 
@@ -212,6 +214,7 @@ describe("CustomGroup 테스트", function () {
         CYCLE_INTERVAL, COLLATERAL_BP, ENROLL_DURATION,
         await vault.getAddress(),
         organizer.address, devWallet.address, eventWallet.address,
+        ethers.ZeroAddress,
       ])).to.be.revertedWith("maxMembers: 2~29");
     });
   });
