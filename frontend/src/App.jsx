@@ -3,26 +3,69 @@ import { ethers } from "ethers";
 
 import HHUSD_ABI   from "./abi/HHUSD.json";
 import VAULT_ABI   from "./abi/CollateralVault.json";
-import USDT_ABI    from "./abi/HHUSD.json"; // MockUSDT는 mint만 사용
 import ADDRESSES   from "./deployedAddresses.json";
 
 import { useAutoGroup }   from "./useAutoGroup.js";
 import { useCustomGroup } from "./useCustomGroup.js";
+import { LanguageProvider, useLang } from "./i18n/LanguageContext.jsx";
+import { LANGUAGES } from "./i18n/translations.js";
 
-import AutoGroupTab   from "./components/AutoGroupTab.jsx";
-import CustomGroupTab from "./components/CustomGroupTab.jsx";
-import DashboardTab   from "./components/DashboardTab.jsx";
+import AutoGroupTab    from "./components/AutoGroupTab.jsx";
+import CustomGroupTab  from "./components/CustomGroupTab.jsx";
+import DashboardTab    from "./components/DashboardTab.jsx";
+import WhitepaperTab   from "./components/WhitepaperTab.jsx";
 
 const ADDR = ADDRESSES.contracts;
-const C    = { color: "#7EB8F7" };
 
-const TABS = [
-  { id: "dashboard",  label: "대시보드" },
-  { id: "auto",       label: "자동화방" },
-  { id: "custom",     label: "커스텀방" },
-];
+// 탭 레이블은 useLang 훅으로 동적 처리
 
-export default function App() {
+// 언어 선택기 컴포넌트
+function LangSwitcher() {
+  const { lang, setLang } = useLang();
+  const [open, setOpen] = useState(false);
+  const cur = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
+
+  return (
+    <div style={{ position:"relative" }}>
+      <button onClick={() => setOpen(o => !o)} style={ls.btn}>
+        {cur.flag} {cur.label} ▾
+      </button>
+      {open && (
+        <div style={ls.dropdown} onMouseLeave={() => setOpen(false)}>
+          {LANGUAGES.map(l => (
+            <div key={l.code}
+              onClick={() => { setLang(l.code); setOpen(false); }}
+              style={{ ...ls.item, background: l.code === lang ? "#1a2a3a" : "transparent" }}
+            >
+              {l.flag} {l.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ls = {
+  btn: {
+    background:"#1a1a1a", border:"1px solid #2a2a2a", color:"#bbb",
+    padding:"6px 12px", borderRadius:8, cursor:"pointer", fontSize:13,
+    whiteSpace:"nowrap",
+  },
+  dropdown: {
+    position:"absolute", right:0, top:"calc(100% + 4px)", zIndex:999,
+    background:"#111", border:"1px solid #2a2a2a", borderRadius:10,
+    minWidth:160, boxShadow:"0 8px 32px rgba(0,0,0,0.6)",
+    maxHeight:320, overflowY:"auto",
+  },
+  item: {
+    padding:"8px 14px", cursor:"pointer", fontSize:13, color:"#ccc",
+    display:"flex", alignItems:"center", gap:8,
+  },
+};
+
+function AppInner() {
+  const { t } = useLang();
   const [provider,  setProvider]  = useState(null);
   const [signer,    setSigner]    = useState(null);
   const [account,   setAccount]   = useState(null);
@@ -45,6 +88,13 @@ export default function App() {
   const [txHash,  setTxHash]  = useState(null);
   const [error,   setError]   = useState(null);
   const [tab,     setTab]     = useState("dashboard");
+
+  const TABS = [
+    { id:"dashboard",  label: t("tab_dashboard") },
+    { id:"auto",       label: t("tab_auto") },
+    { id:"custom",     label: t("tab_custom") },
+    { id:"whitepaper", label: t("tab_whitepaper") },
+  ];
 
   // ── 트랜잭션 헬퍼 ────────────────────────────────────────────────────────
   const onTx = useCallback(async (fn) => {
@@ -181,24 +231,25 @@ export default function App() {
   // ── 미연결 화면 ───────────────────────────────────────────────────────────
   if (!account) return (
     <div style={s.root}>
+      <div style={{ position:"absolute", top:16, right:20 }}><LangSwitcher /></div>
       <div style={s.center}>
         <div style={{ fontSize: 52, marginBottom: 16 }}>💎</div>
         <div style={{ fontSize: 30, fontWeight: 700, color: "#7EB8F7", marginBottom: 8 }}>
           HH Finance
         </div>
         <div style={{ color: "#aaa", marginBottom: 8 }}>
-          탈중앙화 계 시스템 (Rotating Credit DeFi)
+          Decentralized Rotating Credit Protocol
         </div>
         <div style={{ color: "#555", fontSize: 13, marginBottom: 32 }}>
-          자동화방 · 커스텀방 · 담보 관리
+          Auto Room · Custom Room · Collateral System
         </div>
         {error && <div style={s.error}>{error}</div>}
         <button onClick={connect} disabled={loading}
           style={{ ...s.btn, background: "#7EB8F7", fontSize: 16, padding: "14px 48px" }}>
-          {loading ? "연결 중..." : "🦊 MetaMask 연결"}
+          {loading ? t("connecting") : `🦊 ${t("connect_wallet")}`}
         </button>
         <div style={{ color: "#444", fontSize: 12, marginTop: 20 }}>
-          Chain: {ADDRESSES.network} (ID: {ADDRESSES.chainId})
+          {t("chain")}: {ADDRESSES.network} (ID: {ADDRESSES.chainId})
         </div>
       </div>
     </div>
@@ -212,8 +263,9 @@ export default function App() {
           <span style={{ fontSize: 22 }}>💎</span>
           <span style={{ fontWeight: 700, fontSize: 17, color: "#7EB8F7" }}>HH Finance</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ color: "#666", fontSize: 12 }}>Chain: {chainId}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <LangSwitcher />
+          <span style={{ color: "#444", fontSize: 12 }}>Chain: {chainId}</span>
           <div style={s.walletBadge}>
             <span style={{ color: "#A8F77E", marginRight: 6 }}>●</span>
             <span style={{ color: "#eee", fontSize: 13 }}>{short(account)}</span>
@@ -259,8 +311,17 @@ export default function App() {
             {...customGroup}
           />
         )}
+        {tab === "whitepaper" && <WhitepaperTab />}
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <LanguageProvider>
+      <AppInner />
+    </LanguageProvider>
   );
 }
 
