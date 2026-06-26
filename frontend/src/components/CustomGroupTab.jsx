@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useLang } from "../i18n/LanguageContext.jsx";
 
 const STATE_COLOR = {
-  ENROLLING: "#7EB8F7", POSITION_SELECTION: "#F7C97E",
-  ACTIVE: "#A8F77E", COMPLETED: "#888", CANCELLED: "#F77E7E",
+  ENROLLING: "#6C47FF", POSITION_SELECTION: "#FF9500",
+  ACTIVE: "#30D158", COMPLETED: "#999", CANCELLED: "#FF453A",
 };
 
 export default function CustomGroupTab({
@@ -91,14 +91,14 @@ export default function CustomGroupTab({
                       <span style={{ ...s.stateBadge, color: STATE_COLOR[g.stateName] || "#aaa" }}>
                         {g.stateName}
                       </span>
-                      <span style={{ color: "#eee", fontWeight: 600, fontSize: 15 }}>
+                      <span style={{ color: "#1a1a2e", fontWeight: 700, fontSize: 15 }}>
                         {fmt(g.contributionAmount)} HHUSD/{t("cycle")}
                       </span>
-                      <span style={{ color: "#666", fontSize: 12 }}>
+                      <span style={{ color: "#bbb", fontSize: 12 }}>
                         {t("max")} {g.maxMembers}{t("people")}
                       </span>
                       {isMe && (
-                        <span style={{ ...s.badge, background: "#2a1a4a", color: "#C8A8F7" }}>
+                        <span style={{ ...s.badge, background: "#f5f0ff", color: "#9B72FF" }}>
                           {t("im_organizer")}
                         </span>
                       )}
@@ -113,7 +113,7 @@ export default function CustomGroupTab({
                       </button>
                     )}
                     {alreadyIn && (
-                      <span style={{ color: "#A8F77E", fontSize: 13 }}>✓ {t("participating")}</span>
+                      <span style={{ color: "#30D158", fontSize: 13, fontWeight: 700 }}>✓ {t("participating")}</span>
                     )}
                   </div>
 
@@ -130,7 +130,9 @@ export default function CustomGroupTab({
                     <div style={{
                       ...s.progressFill,
                       width: `${(g.memberCount / g.maxMembers) * 100}%`,
-                      background: g.memberCount >= g.maxMembers ? "#F7C97E" : "#7EB8F7",
+                      background: g.memberCount >= g.maxMembers
+                        ? "linear-gradient(90deg,#FF9500,#FFB340)"
+                        : "linear-gradient(90deg,#6C47FF,#9B72FF)",
                     }} />
                     <span style={s.progressLabel}>{g.memberCount}/{g.maxMembers}{t("people")}</span>
                   </div>
@@ -151,17 +153,14 @@ export default function CustomGroupTab({
               <input type="number" min="1" value={form.contribution} onChange={setF("contribution")}
                 style={s.input} placeholder="50" />
             </FormField>
-
             <FormField label={t("form_max_members")} desc={t("form_max_members_desc")}>
               <input type="number" min="2" max="29" value={form.maxMembers} onChange={setF("maxMembers")}
                 style={s.input} placeholder="10" />
             </FormField>
-
             <FormField label={t("form_cycle_days")} desc={t("form_cycle_days_desc")}>
               <input type="number" min="1" value={form.cycleDays} onChange={setF("cycleDays")}
                 style={s.input} placeholder="7" />
             </FormField>
-
             <FormField label={t("form_enroll_hours")} desc={t("form_enroll_hours_desc")}>
               <input type="number" min="1" value={form.enrollHours} onChange={setF("enrollHours")}
                 style={s.input} placeholder="48" />
@@ -169,11 +168,11 @@ export default function CustomGroupTab({
           </div>
 
           <div style={s.collateralPreview}>
-            <span style={{ color: "#888", fontSize: 13 }}>{t("required_collateral")}:</span>
-            <span style={{ color: "#F7C97E", fontSize: 18, fontWeight: 700, marginLeft: 12 }}>
+            <span style={{ color: "#aaa", fontSize: 13 }}>{t("required_collateral")}:</span>
+            <span style={{ color: "#FF9500", fontSize: 20, fontWeight: 800, marginLeft: 12 }}>
               {requiredCollateral()} HHUSD
             </span>
-            <span style={{ color: "#555", fontSize: 12, marginLeft: 8 }}>
+            <span style={{ color: "#ccc", fontSize: 12, marginLeft: 8 }}>
               ({form.contribution} × {form.maxMembers}{t("people")} × 140%)
             </span>
           </div>
@@ -196,11 +195,11 @@ export default function CustomGroupTab({
                     <span style={{ ...s.stateBadge, color: STATE_COLOR[g.stateName] || "#aaa" }}>
                       {g.stateName}
                     </span>
-                    <span style={{ color: "#eee", fontWeight: 600 }}>
+                    <span style={{ color: "#1a1a2e", fontWeight: 700 }}>
                       {fmt(g.contributionAmount)} HHUSD/{t("cycle")}
                     </span>
                     {g.isOrganizer && (
-                      <span style={{ ...s.badge, background: "#2a1a4a", color: "#C8A8F7" }}>{t("organizer")}</span>
+                      <span style={{ ...s.badge, background: "#f5f0ff", color: "#9B72FF" }}>{t("organizer")}</span>
                     )}
                   </div>
                 </div>
@@ -280,8 +279,8 @@ export default function CustomGroupTab({
 function DetailItem({ label, value }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ color: "#555", fontSize: 11 }}>{label}</span>
-      <span style={{ color: "#ccc", fontSize: 13, fontWeight: 500 }}>{value}</span>
+      <span style={{ color: "#bbb", fontSize: 11 }}>{label}</span>
+      <span style={{ color: "#1a1a2e", fontSize: 13, fontWeight: 600 }}>{value}</span>
     </div>
   );
 }
@@ -289,83 +288,91 @@ function DetailItem({ label, value }) {
 function FormField({ label, desc, children }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ color: "#bbb", fontSize: 13, fontWeight: 600 }}>{label}</div>
-      {desc && <div style={{ color: "#555", fontSize: 11 }}>{desc}</div>}
+      <div style={{ color: "#1a1a2e", fontSize: 13, fontWeight: 700 }}>{label}</div>
+      {desc && <div style={{ color: "#bbb", fontSize: 11 }}>{desc}</div>}
       {children}
     </div>
   );
 }
 
 const s = {
-  pageTitle: { fontSize: 18, fontWeight: 700, color: "#eee" },
-  desc: { color: "#666", fontSize: 13, marginBottom: 20, lineHeight: 1.6 },
+  pageTitle: { fontSize: 20, fontWeight: 800, color: "#1a1a2e" },
+  desc: { color: "#aaa", fontSize: 13, marginBottom: 20, lineHeight: 1.7 },
   refreshBtn: {
-    background: "none", border: "1px solid #2a2a2a", color: "#666",
-    padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13,
+    background: "#f5f3ff", border: "1px solid #e0d9ff", color: "#6C47FF",
+    padding: "7px 16px", borderRadius: 50, cursor: "pointer", fontSize: 13, fontWeight: 600,
   },
   subTabBar: { display: "flex", gap: 8, marginBottom: 18 },
   subTab: {
-    background: "none", border: "1px solid #2a2a2a", color: "#666",
-    padding: "6px 16px", borderRadius: 20, cursor: "pointer", fontSize: 13,
+    background: "#fff", border: "1.5px solid #e8e4f7", color: "#aaa",
+    padding: "7px 18px", borderRadius: 50, cursor: "pointer", fontSize: 13, fontWeight: 600,
+    transition: "all 0.15s",
   },
-  subTabActive: { borderColor: "#C8A8F7", color: "#C8A8F7", background: "#1a0a2a" },
+  subTabActive: { borderColor: "#9B72FF", color: "#9B72FF", background: "#f5f0ff" },
   groupCard: {
-    background: "#111", border: "1px solid #1e1e1e", borderRadius: 12,
-    padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12,
+    background: "#fff", border: "1px solid #f0ecff", borderRadius: 18,
+    padding: "18px 22px", display: "flex", flexDirection: "column", gap: 12,
+    boxShadow: "0 2px 16px rgba(108,71,255,0.07)",
   },
   myCard: {
-    background: "#111", border: "1px solid #2a1a4a", borderRadius: 12,
-    padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12,
+    background: "#fff", border: "1.5px solid #e8e0ff", borderRadius: 18,
+    padding: "18px 22px", display: "flex", flexDirection: "column", gap: 12,
+    boxShadow: "0 2px 16px rgba(155,114,255,0.1)",
   },
-  groupHeader: {
-    display: "flex", justifyContent: "space-between", alignItems: "center",
-  },
+  groupHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   stateBadge: { fontSize: 12, fontWeight: 700 },
-  badge: { fontSize: 11, padding: "3px 10px", borderRadius: 20, fontWeight: 600 },
-  detailGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 },
+  badge: { fontSize: 11, padding: "3px 10px", borderRadius: 20, fontWeight: 700 },
+  detailGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 },
   progressBg: {
-    background: "#1a1a1a", borderRadius: 20, height: 20, position: "relative", overflow: "hidden",
+    background: "#f5f3ff", borderRadius: 50, height: 20, position: "relative", overflow: "hidden",
   },
-  progressFill: { height: "100%", borderRadius: 20, transition: "width 0.3s" },
+  progressFill: { height: "100%", borderRadius: 50, transition: "width 0.3s" },
   progressLabel: {
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 11, color: "#111", fontWeight: 700,
+    fontSize: 11, color: "#fff", fontWeight: 700,
+    textShadow: "0 1px 3px rgba(0,0,0,0.3)",
   },
   joinBtn: {
-    background: "#C8A8F7", color: "#111", border: "none",
-    padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    background: "linear-gradient(135deg,#9B72FF,#6C47FF)", color: "#fff", border: "none",
+    padding: "10px 20px", borderRadius: 50, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    boxShadow: "0 2px 12px rgba(108,71,255,0.25)",
   },
   actionRow: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
   input: {
-    background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#eee",
-    padding: "8px 12px", borderRadius: 8, fontSize: 14, width: 120,
+    background: "#fafafa", border: "1.5px solid #e0d9ff", color: "#1a1a2e",
+    padding: "9px 13px", borderRadius: 12, fontSize: 14, width: 120, outline: "none",
   },
   greenBtn: {
-    background: "#A8F77E", color: "#111", border: "none",
-    padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    background: "linear-gradient(135deg,#30D158,#34C759)", color: "#fff", border: "none",
+    padding: "10px 20px", borderRadius: 50, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    boxShadow: "0 2px 10px rgba(48,209,88,0.3)",
   },
   orangeBtn: {
-    background: "#F7C97E", color: "#111", border: "none",
-    padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    background: "linear-gradient(135deg,#FF9500,#FFB340)", color: "#fff", border: "none",
+    padding: "10px 20px", borderRadius: 50, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    boxShadow: "0 2px 10px rgba(255,149,0,0.3)",
   },
   redBtn: {
-    background: "#F77E7E", color: "#111", border: "none",
-    padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    background: "linear-gradient(135deg,#FF453A,#FF6B6B)", color: "#fff", border: "none",
+    padding: "10px 18px", borderRadius: 50, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    boxShadow: "0 2px 10px rgba(255,69,58,0.3)",
   },
   createForm: {
-    background: "#111", border: "1px solid #2a1a4a", borderRadius: 12, padding: "24px",
+    background: "#fff", border: "1.5px solid #e8e0ff", borderRadius: 20, padding: "28px",
+    boxShadow: "0 4px 24px rgba(108,71,255,0.1)",
   },
-  formTitle: { fontSize: 16, fontWeight: 700, color: "#C8A8F7", marginBottom: 8 },
-  formDesc:  { color: "#666", fontSize: 13, marginBottom: 20 },
-  formGrid:  { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 18, marginBottom: 20 },
+  formTitle: { fontSize: 17, fontWeight: 800, color: "#6C47FF", marginBottom: 8 },
+  formDesc:  { color: "#aaa", fontSize: 13, marginBottom: 22 },
+  formGrid:  { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 20, marginBottom: 22 },
   collateralPreview: {
-    background: "#1a1020", border: "1px solid #3a2a5a", borderRadius: 8,
-    padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center",
+    background: "#fff9f0", border: "1.5px solid #ffe4b0", borderRadius: 14,
+    padding: "16px 20px", marginBottom: 22, display: "flex", alignItems: "center",
   },
   createBtn: {
-    background: "#C8A8F7", color: "#111", border: "none",
-    padding: "12px 28px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 15,
+    background: "linear-gradient(135deg,#6C47FF,#9B72FF)", color: "#fff", border: "none",
+    padding: "13px 32px", borderRadius: 50, cursor: "pointer", fontWeight: 800, fontSize: 15,
+    boxShadow: "0 4px 20px rgba(108,71,255,0.35)",
   },
-  empty: { color: "#444", fontSize: 14, padding: "32px 0", textAlign: "center" },
+  empty: { color: "#ccc", fontSize: 14, padding: "40px 0", textAlign: "center" },
 };

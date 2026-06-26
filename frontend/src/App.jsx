@@ -18,9 +18,6 @@ import WhitepaperTab   from "./components/WhitepaperTab.jsx";
 
 const ADDR = ADDRESSES.contracts;
 
-// 탭 레이블은 useLang 훅으로 동적 처리
-
-// 언어 선택기 컴포넌트
 function LangSwitcher() {
   const { lang, setLang } = useLang();
   const [open, setOpen] = useState(false);
@@ -36,7 +33,7 @@ function LangSwitcher() {
           {LANGUAGES.map(l => (
             <div key={l.code}
               onClick={() => { setLang(l.code); setOpen(false); }}
-              style={{ ...ls.item, background: l.code === lang ? "#1a2a3a" : "transparent" }}
+              style={{ ...ls.item, background: l.code === lang ? "#f0ecff" : "transparent" }}
             >
               {l.flag} {l.label}
             </div>
@@ -49,18 +46,18 @@ function LangSwitcher() {
 
 const ls = {
   btn: {
-    background:"#1a1a1a", border:"1px solid #2a2a2a", color:"#bbb",
-    padding:"6px 12px", borderRadius:8, cursor:"pointer", fontSize:13,
-    whiteSpace:"nowrap",
+    background:"#fff", border:"1px solid #e0d9ff", color:"#6C47FF",
+    padding:"6px 12px", borderRadius:50, cursor:"pointer", fontSize:13,
+    whiteSpace:"nowrap", fontWeight:600,
   },
   dropdown: {
     position:"absolute", right:0, top:"calc(100% + 4px)", zIndex:999,
-    background:"#111", border:"1px solid #2a2a2a", borderRadius:10,
-    minWidth:160, boxShadow:"0 8px 32px rgba(0,0,0,0.6)",
+    background:"#fff", border:"1px solid #e0d9ff", borderRadius:14,
+    minWidth:160, boxShadow:"0 8px 32px rgba(108,71,255,0.15)",
     maxHeight:320, overflowY:"auto",
   },
   item: {
-    padding:"8px 14px", cursor:"pointer", fontSize:13, color:"#ccc",
+    padding:"8px 14px", cursor:"pointer", fontSize:13, color:"#444",
     display:"flex", alignItems:"center", gap:8,
   },
 };
@@ -77,12 +74,11 @@ function AppInner() {
   const [lockedCol, setLockedCol] = useState("0");
   const [usdtBal,   setUsdtBal]   = useState("0");
 
-  // 플랫폼 전체 통계
   const [platformStats, setPlatformStats] = useState({
-    totalUsers:    0,   // 전체 방 멤버 수 합산
-    totalPool:     "0", // 전체 계 금액 합산 (HHUSD)
-    totalGroups:   0,   // 전체 방 수
-    activeGroups:  0,   // 진행 중인 방 수 (ACTIVE)
+    totalUsers:    0,
+    totalPool:     "0",
+    totalGroups:   0,
+    activeGroups:  0,
   });
 
   const [loading, setLoading] = useState(false);
@@ -97,7 +93,6 @@ function AppInner() {
     { id:"whitepaper", label: t("tab_whitepaper") },
   ];
 
-  // ── 트랜잭션 헬퍼 ────────────────────────────────────────────────────────
   const onTx = useCallback(async (fn) => {
     setLoading(true); setError(null); setTxHash(null);
     try {
@@ -112,7 +107,6 @@ function AppInner() {
     }
   }, []);
 
-  // ── 지갑 연결 ────────────────────────────────────────────────────────────
   const connect = useCallback(async () => {
     if (!window.ethereum) { setError("MetaMask를 설치해주세요"); return; }
     try {
@@ -142,7 +136,6 @@ function AppInner() {
     finally { setLoading(false); }
   }, []);
 
-  // ── 잔액 새로고침 ─────────────────────────────────────────────────────────
   const refreshBalances = useCallback(async () => {
     if (!contracts || !account) return;
     try {
@@ -159,7 +152,6 @@ function AppInner() {
 
   useEffect(() => { refreshBalances(); }, [refreshBalances]);
 
-  // ── 그룹 훅 ──────────────────────────────────────────────────────────────
   const autoGroup   = useAutoGroup(signer, account, contracts?.vault, contracts?.hhusd, onTx, refreshBalances);
   const customGroup = useCustomGroup(signer, account, contracts?.hhusd, onTx, refreshBalances);
 
@@ -167,10 +159,8 @@ function AppInner() {
     if (account) { autoGroup.refresh(); customGroup.refresh(); }
   }, [account]);
 
-  // ── 플랫폼 통계 집계 ─────────────────────────────────────────────────────
   useEffect(() => {
-    // autoGroup.activeInfos + customGroup.allGroups 로부터 집계
-    const autoAll  = autoGroup.activeInfos  || [];
+    const autoAll   = autoGroup.activeInfos  || [];
     const customAll = customGroup.allGroups || [];
 
     let totalUsers   = 0;
@@ -178,25 +168,20 @@ function AppInner() {
     let totalGroups  = 0;
     let activeGroups = 0;
 
-    // 자동화방: activeInfos는 티어별 현재 활성방만 보여줌
-    // 정확한 totalGroups는 autoGroup.activeInfos[i].totalGroups 합산
     for (const info of autoAll) {
       totalUsers  += info.memberCount || 0;
       totalGroups += info.totalGroups || 0;
-      if (info.state === 2) activeGroups++; // ACTIVE
-      // 계 금액 = contributionAmount × totalCycles × memberCount (근사)
+      if (info.state === 2) activeGroups++;
       const tierAmts = [10, 20, 50, 100, 200];
       const contrib  = BigInt(tierAmts[info.tierIndex] || 0) * BigInt(1e18);
       const members  = BigInt(info.memberCount || 0);
-      totalPoolWei  += contrib * members * 28n; // 28 사이클 기준
+      totalPoolWei  += contrib * members * 28n;
     }
 
-    // 커스텀방
     for (const g of customAll) {
       totalUsers  += g.memberCount || 0;
       totalGroups += 1;
       if (g.state === 2) activeGroups++;
-      // 계 금액 = contributionAmount × maxMembers × memberCount (실납입 기준)
       try {
         const contrib = BigInt(Math.round(parseFloat(g.contributionAmount || "0") * 1e18));
         const members = BigInt(g.memberCount || 0);
@@ -212,24 +197,15 @@ function AppInner() {
     });
   }, [autoGroup.activeInfos, customGroup.allGroups]);
 
-  // ── 유틸 ─────────────────────────────────────────────────────────────────
-  const mintHHUSD = async (amount) => {
+  const mintMockUSDT = async (amount) => {
     if (!contracts) return;
-    try {
-      // MockUSDT mint 시도 (로컬넷: deployer 권한 있음)
-      await onTx(() => contracts.usdt.mint(account, ethers.parseEther(String(amount))));
-    } catch (e) {
-      // BSC 테스트넷: MockUSDT mint 권한 없음 → HHUSD 직접 deposit으로 대체 안내
-      setError("테스트넷에서는 MockUSDT faucet이 없습니다. BscScan에서 직접 mint() 호출 필요: " + (ADDR.MockUSDT));
-      return;
-    }
+    await onTx(() => contracts.usdt.mint(account, ethers.parseEther(String(amount))));
     await refreshBalances();
   };
 
   const fmt   = (n) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
   const short = (a) => a ? `${a.slice(0,6)}...${a.slice(-4)}` : "";
 
-  // ── 공통 props ───────────────────────────────────────────────────────────
   const sharedProps = {
     account, loading, txHash, error,
     hhusdBal, lockedCol, usdtBal,
@@ -237,27 +213,32 @@ function AppInner() {
     contracts, ethers,
   };
 
-  // ── 미연결 화면 ───────────────────────────────────────────────────────────
   if (!account) return (
     <div style={s.root}>
+      <div style={{ position:"absolute", top:60, left:80, width:18, height:18, borderRadius:"50%", background:"#FF9500", opacity:0.7 }} />
+      <div style={{ position:"absolute", top:120, right:120, width:12, height:12, borderRadius:"50%", background:"#FFD60A", opacity:0.6 }} />
+      <div style={{ position:"absolute", bottom:180, left:140, width:14, height:14, transform:"rotate(45deg)", background:"#6C47FF", opacity:0.3 }} />
+      <div style={{ position:"absolute", bottom:100, right:80, width:20, height:20, borderRadius:"50%", background:"#30D158", opacity:0.5 }} />
       <div style={{ position:"absolute", top:16, right:20 }}><LangSwitcher /></div>
       <div style={s.center}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>💎</div>
-        <div style={{ fontSize: 30, fontWeight: 700, color: "#7EB8F7", marginBottom: 8 }}>
+        <div style={s.logoWrap}>
+          <div style={{ fontSize: 48, lineHeight:1 }}>💎</div>
+        </div>
+        <div style={{ fontSize: 32, fontWeight: 800, color: "#6C47FF", marginBottom: 6, letterSpacing:-0.5 }}>
           HH Finance
         </div>
-        <div style={{ color: "#aaa", marginBottom: 8 }}>
+        <div style={{ color: "#666", marginBottom: 6, fontSize:15 }}>
           Decentralized Rotating Credit Protocol
         </div>
-        <div style={{ color: "#555", fontSize: 13, marginBottom: 32 }}>
+        <div style={{ color: "#aaa", fontSize: 13, marginBottom: 40 }}>
           Auto Room · Custom Room · Collateral System
         </div>
         {error && <div style={s.error}>{error}</div>}
         <button onClick={connect} disabled={loading}
-          style={{ ...s.btn, background: "#7EB8F7", fontSize: 16, padding: "14px 48px" }}>
+          style={{ ...s.btn, background: "linear-gradient(135deg,#6C47FF,#9B72FF)", color:"#fff", fontSize: 16, padding: "14px 52px", borderRadius:50, boxShadow:"0 4px 20px rgba(108,71,255,0.35)" }}>
           {loading ? t("connecting") : `🦊 ${t("connect_wallet")}`}
         </button>
-        <div style={{ color: "#444", fontSize: 12, marginTop: 20 }}>
+        <div style={{ color: "#bbb", fontSize: 12, marginTop: 24 }}>
           {t("chain")}: {ADDRESSES.network} (ID: {ADDRESSES.chainId})
         </div>
       </div>
@@ -266,43 +247,39 @@ function AppInner() {
 
   return (
     <div style={s.root}>
-      {/* 헤더 */}
       <div style={s.header}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 22 }}>💎</span>
-          <span style={{ fontWeight: 700, fontSize: 17, color: "#7EB8F7" }}>HH Finance</span>
+          <span style={{ fontWeight: 800, fontSize: 18, color: "#6C47FF" }}>HH Finance</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <LangSwitcher />
-          <span style={{ color: "#444", fontSize: 12 }}>Chain: {chainId}</span>
+          <span style={{ color: "#bbb", fontSize: 12 }}>Chain: {chainId}</span>
           <div style={s.walletBadge}>
-            <span style={{ color: "#A8F77E", marginRight: 6 }}>●</span>
-            <span style={{ color: "#eee", fontSize: 13 }}>{short(account)}</span>
+            <span style={{ color: "#30D158", marginRight: 6 }}>●</span>
+            <span style={{ color: "#1a1a2e", fontSize: 13, fontWeight:600 }}>{short(account)}</span>
           </div>
         </div>
       </div>
 
-      {/* 탭 */}
       <div style={s.tabBar}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            style={{ ...s.tabBtn, ...(tab === t.id ? s.tabActive : {}) }}>
-            {t.label}
+        {TABS.map(tb => (
+          <button key={tb.id} onClick={() => setTab(tb.id)}
+            style={{ ...s.tabBtn, ...(tab === tb.id ? s.tabActive : {}) }}>
+            {tb.label}
           </button>
         ))}
       </div>
 
-      {/* 알림 */}
-      {error  && <div style={s.error}>⚠ {error}</div>}
-      {txHash && <div style={s.success}>✓ TX: {short(txHash)}</div>}
-      {loading && <div style={s.info}>⏳ 트랜잭션 처리 중...</div>}
+      {error  && <div style={s.errorBanner}>⚠ {error}</div>}
+      {txHash && <div style={s.successBanner}>✓ TX: {short(txHash)}</div>}
+      {loading && <div style={s.infoBanner}>⏳ 트랜잭션 처리 중...</div>}
 
-      {/* 탭 내용 */}
       <div style={s.content}>
         {tab === "dashboard" && (
           <DashboardTab
             {...sharedProps}
-            mintHHUSD={mintHHUSD}
+            mintMockUSDT={mintMockUSDT}
             autoMyGroups={autoGroup.myGroups}
             customMyGroups={customGroup.myGroups}
             platformStats={platformStats}
@@ -334,45 +311,60 @@ export default function App() {
   );
 }
 
-// ── 스타일 ──────────────────────────────────────────────────────────────────
 const s = {
   root: {
-    minHeight: "100vh", background: "#0d0d0d",
-    color: "#eee", fontFamily: "'Inter', 'Segoe UI', sans-serif",
+    minHeight: "100vh", background: "#FAFAFA",
+    color: "#1a1a2e", fontFamily: "'Inter', 'Segoe UI', sans-serif",
+    position: "relative",
   },
   center: {
     display: "flex", flexDirection: "column", alignItems: "center",
     justifyContent: "center", minHeight: "100vh",
   },
+  logoWrap: {
+    width: 80, height: 80, borderRadius: 24,
+    background: "linear-gradient(135deg,#f0ecff,#e8e0ff)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    marginBottom: 20, boxShadow: "0 4px 20px rgba(108,71,255,0.15)",
+  },
   header: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "14px 24px", borderBottom: "1px solid #1e1e1e",
-    background: "#111",
+    padding: "14px 28px", borderBottom: "1px solid #f0ecff",
+    background: "#fff", boxShadow: "0 1px 8px rgba(108,71,255,0.06)",
   },
   tabBar: {
-    display: "flex", gap: 4, padding: "12px 24px",
-    borderBottom: "1px solid #1a1a1a", background: "#0f0f0f",
+    display: "flex", gap: 0, padding: "0 28px",
+    borderBottom: "2px solid #f0ecff", background: "#fff",
   },
   tabBtn: {
-    background: "none", border: "1px solid #2a2a2a",
-    color: "#888", padding: "7px 18px", borderRadius: 8,
-    cursor: "pointer", fontSize: 14, fontWeight: 500,
+    background: "none", border: "none", borderBottom: "3px solid transparent",
+    color: "#999", padding: "14px 20px", marginBottom: -2,
+    cursor: "pointer", fontSize: 14, fontWeight: 600,
     transition: "all 0.15s",
   },
   tabActive: {
-    background: "#1a2a3a", borderColor: "#7EB8F7", color: "#7EB8F7",
+    borderBottomColor: "#6C47FF", color: "#6C47FF",
   },
   walletBadge: {
-    background: "#1a1a1a", border: "1px solid #2a2a2a",
-    borderRadius: 20, padding: "6px 14px", display: "flex", alignItems: "center",
+    background: "#f5f3ff", border: "1px solid #e0d9ff",
+    borderRadius: 50, padding: "6px 14px", display: "flex", alignItems: "center",
   },
-  content: { padding: "24px", maxWidth: 1100, margin: "0 auto" },
+  content: { padding: "28px", maxWidth: 1100, margin: "0 auto" },
   btn: {
-    border: "none", borderRadius: 8, color: "#111",
-    padding: "10px 20px", cursor: "pointer", fontWeight: 700,
+    border: "none", borderRadius: 50, color: "#fff",
+    padding: "10px 24px", cursor: "pointer", fontWeight: 700,
     fontSize: 14, transition: "opacity 0.15s",
   },
-  error:   { background: "#2a1010", border: "1px solid #5a2020", borderRadius: 8, padding: "10px 16px", color: "#f88", marginBottom: 12 },
-  success: { background: "#102a10", border: "1px solid #205a20", borderRadius: 8, padding: "10px 16px", color: "#8f8", marginBottom: 12 },
-  info:    { background: "#1a1a2a", border: "1px solid #2a2a5a", borderRadius: 8, padding: "10px 16px", color: "#88f", marginBottom: 12 },
+  errorBanner: {
+    background: "#fff0f0", border: "1px solid #ffd0d0", borderRadius: 10,
+    padding: "10px 20px", color: "#c0392b", margin: "12px 28px 0",
+  },
+  successBanner: {
+    background: "#f0fff4", border: "1px solid #b7ebc4", borderRadius: 10,
+    padding: "10px 20px", color: "#27ae60", margin: "12px 28px 0",
+  },
+  infoBanner: {
+    background: "#f5f3ff", border: "1px solid #d5ccff", borderRadius: 10,
+    padding: "10px 20px", color: "#6C47FF", margin: "12px 28px 0",
+  },
 };

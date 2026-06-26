@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useLang } from "../i18n/LanguageContext.jsx";
 
 const STATE_COLOR = {
-  ENROLLING: "#7EB8F7", POSITION_SELECTION: "#F7C97E",
-  ACTIVE: "#A8F77E", COMPLETED: "#888", CANCELLED: "#F77E7E",
+  ENROLLING: "#6C47FF", POSITION_SELECTION: "#FF9500",
+  ACTIVE: "#30D158", COMPLETED: "#999", CANCELLED: "#FF453A",
 };
 
 export default function AutoGroupTab({
@@ -54,10 +54,10 @@ export default function AutoGroupTab({
                       {info.stateName}
                     </span>
                   ) : (
-                    <span style={{ color: "#444", fontSize: 13 }}>{t("no_room")}</span>
+                    <span style={{ color: "#ccc", fontSize: 13 }}>{t("no_room")}</span>
                   )}
                   {info.totalGroups > 0 && (
-                    <span style={{ color: "#555", fontSize: 12 }}>{t("total_created")} {info.totalGroups}{t("rooms_created")}</span>
+                    <span style={{ color: "#bbb", fontSize: 12 }}>{t("total_created")} {info.totalGroups}{t("rooms_created")}</span>
                   )}
                 </div>
                 <button
@@ -83,7 +83,9 @@ export default function AutoGroupTab({
                     <div style={{
                       ...s.progressFill,
                       width: `${(info.memberCount / 28) * 100}%`,
-                      background: info.memberCount >= 10 ? "#A8F77E" : "#7EB8F7",
+                      background: info.memberCount >= 10
+                        ? "linear-gradient(90deg,#30D158,#34C759)"
+                        : "linear-gradient(90deg,#6C47FF,#9B72FF)",
                     }} />
                     <span style={s.progressLabel}>
                       {info.memberCount}/28{t("people")}
@@ -110,7 +112,7 @@ export default function AutoGroupTab({
                     <span style={{ ...s.stateBadge, color: STATE_COLOR[g.stateName] || "#aaa" }}>
                       {g.stateName}
                     </span>
-                    <span style={{ color: "#666", fontSize: 12 }}>{short(g.groupAddr)}</span>
+                    <span style={{ color: "#ccc", fontSize: 12 }}>{short(g.groupAddr)}</span>
                   </div>
                 </div>
 
@@ -160,62 +162,70 @@ export default function AutoGroupTab({
 function DetailItem({ label, value }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ color: "#555", fontSize: 11 }}>{label}</span>
-      <span style={{ color: "#ccc", fontSize: 13, fontWeight: 500 }}>{value}</span>
+      <span style={{ color: "#bbb", fontSize: 11 }}>{label}</span>
+      <span style={{ color: "#1a1a2e", fontSize: 13, fontWeight: 600 }}>{value}</span>
     </div>
   );
 }
 
 const s = {
-  pageTitle: { fontSize: 18, fontWeight: 700, color: "#eee" },
-  desc: { color: "#666", fontSize: 13, marginBottom: 20, lineHeight: 1.6 },
+  pageTitle: { fontSize: 20, fontWeight: 800, color: "#1a1a2e" },
+  desc: { color: "#aaa", fontSize: 13, marginBottom: 20, lineHeight: 1.7 },
   refreshBtn: {
-    background: "none", border: "1px solid #2a2a2a", color: "#666",
-    padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13,
+    background: "#f5f3ff", border: "1px solid #e0d9ff", color: "#6C47FF",
+    padding: "7px 16px", borderRadius: 50, cursor: "pointer", fontSize: 13, fontWeight: 600,
   },
   subTabBar: { display: "flex", gap: 8, marginBottom: 18 },
   subTab: {
-    background: "none", border: "1px solid #2a2a2a", color: "#666",
-    padding: "6px 16px", borderRadius: 20, cursor: "pointer", fontSize: 13,
+    background: "#fff", border: "1.5px solid #e8e4f7", color: "#aaa",
+    padding: "7px 18px", borderRadius: 50, cursor: "pointer", fontSize: 13, fontWeight: 600,
+    transition: "all 0.15s",
   },
-  subTabActive: { borderColor: "#7EB8F7", color: "#7EB8F7", background: "#0a1820" },
-  tierCard: { background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, overflow: "hidden" },
+  subTabActive: { borderColor: "#6C47FF", color: "#6C47FF", background: "#f0ecff" },
+  tierCard: {
+    background: "#fff", border: "1px solid #f0ecff", borderRadius: 18,
+    overflow: "hidden", boxShadow: "0 2px 16px rgba(108,71,255,0.07)",
+  },
   myGroupCard: {
-    background: "#111", border: "1px solid #1e1e1e", borderRadius: 12,
-    padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12,
+    background: "#fff", border: "1px solid #f0ecff", borderRadius: 18,
+    padding: "18px 22px", display: "flex", flexDirection: "column", gap: 12,
+    boxShadow: "0 2px 16px rgba(108,71,255,0.07)",
   },
   tierHeader: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "14px 20px",
+    padding: "16px 22px",
   },
-  tierDetail: { padding: "0 20px 16px", display: "flex", flexDirection: "column", gap: 12 },
+  tierDetail: { padding: "0 22px 18px", display: "flex", flexDirection: "column", gap: 14 },
   tierBadge: {
-    background: "#1a2a3a", color: "#7EB8F7", fontSize: 13,
-    padding: "4px 12px", borderRadius: 20, fontWeight: 700,
+    background: "#f0ecff", color: "#6C47FF", fontSize: 13,
+    padding: "5px 14px", borderRadius: 50, fontWeight: 700,
   },
-  stateBadge: { fontSize: 12, fontWeight: 600 },
+  stateBadge: { fontSize: 12, fontWeight: 700 },
   joinBtn: {
-    background: "#7EB8F7", color: "#111", border: "none",
-    padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    background: "linear-gradient(135deg,#6C47FF,#9B72FF)", color: "#fff", border: "none",
+    padding: "10px 20px", borderRadius: 50, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    boxShadow: "0 2px 12px rgba(108,71,255,0.25)",
   },
-  detailGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 },
+  detailGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 },
   progressBg: {
-    background: "#1a1a1a", borderRadius: 20, height: 22, position: "relative", overflow: "hidden",
+    background: "#f5f3ff", borderRadius: 50, height: 22, position: "relative", overflow: "hidden",
   },
-  progressFill: { height: "100%", borderRadius: 20, transition: "width 0.3s" },
+  progressFill: { height: "100%", borderRadius: 50, transition: "width 0.3s" },
   progressLabel: {
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 11, color: "#111", fontWeight: 700,
+    fontSize: 11, color: "#fff", fontWeight: 700,
+    textShadow: "0 1px 3px rgba(0,0,0,0.3)",
   },
   actionRow: { display: "flex", gap: 10, alignItems: "center" },
   input: {
-    background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#eee",
-    padding: "8px 12px", borderRadius: 8, fontSize: 14, width: 120,
+    background: "#fafafa", border: "1.5px solid #e0d9ff", color: "#1a1a2e",
+    padding: "9px 13px", borderRadius: 12, fontSize: 14, width: 120, outline: "none",
   },
   actionBtn: {
-    background: "#A8F77E", color: "#111", border: "none",
-    padding: "9px 18px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    background: "linear-gradient(135deg,#30D158,#34C759)", color: "#fff", border: "none",
+    padding: "10px 20px", borderRadius: 50, cursor: "pointer", fontWeight: 700, fontSize: 13,
+    boxShadow: "0 2px 10px rgba(48,209,88,0.3)",
   },
-  empty: { color: "#444", fontSize: 14, padding: "32px 0", textAlign: "center" },
+  empty: { color: "#ccc", fontSize: 14, padding: "40px 0", textAlign: "center" },
 };
