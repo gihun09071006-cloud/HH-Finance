@@ -22,7 +22,6 @@ function LangSwitcher() {
   const { lang, setLang } = useLang();
   const [open, setOpen] = useState(false);
   const cur = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
-
   return (
     <div style={{ position:"relative" }}>
       <button onClick={() => setOpen(o => !o)} style={ls.btn}>
@@ -33,7 +32,7 @@ function LangSwitcher() {
           {LANGUAGES.map(l => (
             <div key={l.code}
               onClick={() => { setLang(l.code); setOpen(false); }}
-              style={{ ...ls.item, background: l.code === lang ? "#f0ecff" : "transparent" }}
+              style={{ ...ls.item, background: l.code === lang ? "#EDE9FF" : "transparent" }}
             >
               {l.flag} {l.label}
             </div>
@@ -46,18 +45,18 @@ function LangSwitcher() {
 
 const ls = {
   btn: {
-    background:"#fff", border:"1px solid #e0d9ff", color:"#6C47FF",
-    padding:"6px 12px", borderRadius:50, cursor:"pointer", fontSize:13,
-    whiteSpace:"nowrap", fontWeight:600,
+    background:"#F4F2FF", border:"none", color:"#5C3DE5",
+    padding:"7px 14px", borderRadius:8, cursor:"pointer", fontSize:13,
+    whiteSpace:"nowrap", fontWeight:600, letterSpacing:0.2,
   },
   dropdown: {
-    position:"absolute", right:0, top:"calc(100% + 4px)", zIndex:999,
-    background:"#fff", border:"1px solid #e0d9ff", borderRadius:14,
-    minWidth:160, boxShadow:"0 8px 32px rgba(108,71,255,0.15)",
+    position:"absolute", right:0, top:"calc(100% + 6px)", zIndex:999,
+    background:"#fff", border:"1.5px solid #EBEBF0", borderRadius:12,
+    minWidth:160, boxShadow:"0 8px 32px rgba(0,0,0,0.12)",
     maxHeight:320, overflowY:"auto",
   },
   item: {
-    padding:"8px 14px", cursor:"pointer", fontSize:13, color:"#444",
+    padding:"9px 14px", cursor:"pointer", fontSize:13, color:"#3D3B54",
     display:"flex", alignItems:"center", gap:8,
   },
 };
@@ -75,10 +74,7 @@ function AppInner() {
   const [usdtBal,   setUsdtBal]   = useState("0");
 
   const [platformStats, setPlatformStats] = useState({
-    totalUsers:    0,
-    totalPool:     "0",
-    totalGroups:   0,
-    activeGroups:  0,
+    totalUsers: 0, totalPool: "0", totalGroups: 0, activeGroups: 0,
   });
 
   const [loading, setLoading] = useState(false);
@@ -116,7 +112,6 @@ function AppInner() {
       const sign = await prov.getSigner();
       const addr = await sign.getAddress();
       const net  = await prov.getNetwork();
-
       const c = {
         hhusd:    new ethers.Contract(ADDR.HHUSD,          HHUSD_ABI,    sign),
         vault:    new ethers.Contract(ADDR.CollateralVault, VAULT_ABI,    sign),
@@ -128,7 +123,6 @@ function AppInner() {
           "function allowance(address,address) view returns (uint256)",
         ], sign),
       };
-
       setProvider(prov); setSigner(sign);
       setAccount(addr); setChainId(Number(net.chainId));
       setContracts(c);
@@ -162,36 +156,27 @@ function AppInner() {
   useEffect(() => {
     const autoAll   = autoGroup.activeInfos  || [];
     const customAll = customGroup.allGroups || [];
-
-    let totalUsers   = 0;
-    let totalPoolWei = 0n;
-    let totalGroups  = 0;
-    let activeGroups = 0;
-
+    let totalUsers = 0, totalPoolWei = 0n, totalGroups = 0, activeGroups = 0;
     for (const info of autoAll) {
       totalUsers  += info.memberCount || 0;
       totalGroups += info.totalGroups || 0;
       if (info.state === 2) activeGroups++;
       const tierAmts = [10, 20, 50, 100, 200];
       const contrib  = BigInt(tierAmts[info.tierIndex] || 0) * BigInt(1e18);
-      const members  = BigInt(info.memberCount || 0);
-      totalPoolWei  += contrib * members * 28n;
+      totalPoolWei  += contrib * BigInt(info.memberCount || 0) * 28n;
     }
-
     for (const g of customAll) {
       totalUsers  += g.memberCount || 0;
       totalGroups += 1;
       if (g.state === 2) activeGroups++;
       try {
         const contrib = BigInt(Math.round(parseFloat(g.contributionAmount || "0") * 1e18));
-        const members = BigInt(g.memberCount || 0);
-        totalPoolWei += contrib * members;
+        totalPoolWei += contrib * BigInt(g.memberCount || 0);
       } catch {}
     }
-
     setPlatformStats({
       totalUsers,
-      totalPool:    (Number(totalPoolWei) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 0 }),
+      totalPool: (Number(totalPoolWei) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 0 }),
       totalGroups,
       activeGroups,
     });
@@ -214,32 +199,21 @@ function AppInner() {
   };
 
   if (!account) return (
-    <div style={s.root}>
-      <div style={{ position:"absolute", top:60, left:80, width:18, height:18, borderRadius:"50%", background:"#FF9500", opacity:0.7 }} />
-      <div style={{ position:"absolute", top:120, right:120, width:12, height:12, borderRadius:"50%", background:"#FFD60A", opacity:0.6 }} />
-      <div style={{ position:"absolute", bottom:180, left:140, width:14, height:14, transform:"rotate(45deg)", background:"#6C47FF", opacity:0.3 }} />
-      <div style={{ position:"absolute", bottom:100, right:80, width:20, height:20, borderRadius:"50%", background:"#30D158", opacity:0.5 }} />
+    <div style={s.connectRoot}>
       <div style={{ position:"absolute", top:16, right:20 }}><LangSwitcher /></div>
-      <div style={s.center}>
-        <div style={s.logoWrap}>
-          <div style={{ fontSize: 48, lineHeight:1 }}>💎</div>
-        </div>
-        <div style={{ fontSize: 32, fontWeight: 800, color: "#6C47FF", marginBottom: 6, letterSpacing:-0.5 }}>
-          HH Finance
-        </div>
-        <div style={{ color: "#666", marginBottom: 6, fontSize:15 }}>
-          Decentralized Rotating Credit Protocol
-        </div>
-        <div style={{ color: "#aaa", fontSize: 13, marginBottom: 40 }}>
-          Auto Room · Custom Room · Collateral System
-        </div>
-        {error && <div style={s.error}>{error}</div>}
-        <button onClick={connect} disabled={loading}
-          style={{ ...s.btn, background: "linear-gradient(135deg,#6C47FF,#9B72FF)", color:"#fff", fontSize: 16, padding: "14px 52px", borderRadius:50, boxShadow:"0 4px 20px rgba(108,71,255,0.35)" }}>
-          {loading ? t("connecting") : `🦊 ${t("connect_wallet")}`}
-        </button>
-        <div style={{ color: "#bbb", fontSize: 12, marginTop: 24 }}>
-          {t("chain")}: {ADDRESSES.network} (ID: {ADDRESSES.chainId})
+      <div style={s.connectWrap}>
+        <div style={s.connectCard}>
+          <div style={s.logoMark}>◆</div>
+          <div style={s.connectTitle}>HH Finance</div>
+          <div style={s.connectSub}>Decentralized Rotating Credit Protocol</div>
+          <div style={s.connectDesc}>Auto Room · Custom Room · Collateral System</div>
+          {error && <div style={s.errBox}>{error}</div>}
+          <button onClick={connect} disabled={loading} style={s.connectBtn}>
+            {loading ? t("connecting") : `🦊 ${t("connect_wallet")}`}
+          </button>
+          <div style={s.connectNet}>
+            {t("chain")}: {ADDRESSES.network} (ID: {ADDRESSES.chainId})
+          </div>
         </div>
       </div>
     </div>
@@ -248,16 +222,16 @@ function AppInner() {
   return (
     <div style={s.root}>
       <div style={s.header}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 22 }}>💎</span>
-          <span style={{ fontWeight: 800, fontSize: 18, color: "#6C47FF" }}>HH Finance</span>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <span style={s.logoMark2}>◆</span>
+          <span style={s.brandName}>HH Finance</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <LangSwitcher />
-          <span style={{ color: "#bbb", fontSize: 12 }}>Chain: {chainId}</span>
+          <span style={s.chainBadge}>Chain {chainId}</span>
           <div style={s.walletBadge}>
-            <span style={{ color: "#30D158", marginRight: 6 }}>●</span>
-            <span style={{ color: "#1a1a2e", fontSize: 13, fontWeight:600 }}>{short(account)}</span>
+            <span style={{ color:"#00C48C", fontSize:8, marginRight:6 }}>●</span>
+            <span style={{ color:"#0F0A2E", fontSize:13, fontWeight:600, fontFamily:"monospace" }}>{short(account)}</span>
           </div>
         </div>
       </div>
@@ -285,18 +259,8 @@ function AppInner() {
             platformStats={platformStats}
           />
         )}
-        {tab === "auto" && (
-          <AutoGroupTab
-            {...sharedProps}
-            {...autoGroup}
-          />
-        )}
-        {tab === "custom" && (
-          <CustomGroupTab
-            {...sharedProps}
-            {...customGroup}
-          />
-        )}
+        {tab === "auto"      && <AutoGroupTab  {...sharedProps} {...autoGroup} />}
+        {tab === "custom"    && <CustomGroupTab {...sharedProps} {...customGroup} />}
         {tab === "whitepaper" && <WhitepaperTab />}
       </div>
     </div>
@@ -304,67 +268,80 @@ function AppInner() {
 }
 
 export default function App() {
-  return (
-    <LanguageProvider>
-      <AppInner />
-    </LanguageProvider>
-  );
+  return <LanguageProvider><AppInner /></LanguageProvider>;
 }
 
 const s = {
   root: {
-    minHeight: "100vh", background: "#FAFAFA",
-    color: "#1a1a2e", fontFamily: "'Inter', 'Segoe UI', sans-serif",
-    position: "relative",
+    minHeight:"100vh", background:"#F6F5FE",
+    color:"#0F0A2E", fontFamily:"'Inter','Segoe UI',sans-serif",
   },
-  center: {
-    display: "flex", flexDirection: "column", alignItems: "center",
-    justifyContent: "center", minHeight: "100vh",
+  connectRoot: {
+    minHeight:"100vh",
+    background:"radial-gradient(ellipse at 30% 40%, #EDE9FF 0%, #F6F5FE 55%, #E8FBF4 100%)",
+    fontFamily:"'Inter','Segoe UI',sans-serif", position:"relative",
   },
-  logoWrap: {
-    width: 80, height: 80, borderRadius: 24,
-    background: "linear-gradient(135deg,#f0ecff,#e8e0ff)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    marginBottom: 20, boxShadow: "0 4px 20px rgba(108,71,255,0.15)",
+  connectWrap: {
+    display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh",
   },
+  connectCard: {
+    background:"#fff", borderRadius:24, padding:"52px 60px",
+    display:"flex", flexDirection:"column", alignItems:"center",
+    boxShadow:"0 8px 48px rgba(92,61,229,0.12), 0 1px 2px rgba(0,0,0,0.04)",
+    border:"1.5px solid #EBEBF0", minWidth:380,
+  },
+  logoMark:    { fontSize:36, color:"#5C3DE5", marginBottom:20, lineHeight:1 },
+  connectTitle:{ fontSize:30, fontWeight:900, color:"#0F0A2E", letterSpacing:-1.5, marginBottom:8 },
+  connectSub:  { color:"#7B7A8E", fontSize:14, marginBottom:6 },
+  connectDesc: { color:"#C0BFD4", fontSize:12, marginBottom:36 },
+  errBox: {
+    background:"#FFF1F0", border:"1.5px solid #FFCCC7", borderRadius:10,
+    padding:"10px 16px", color:"#CF1322", fontSize:13, marginBottom:16,
+    width:"100%", boxSizing:"border-box", textAlign:"center",
+  },
+  connectBtn: {
+    background:"linear-gradient(135deg,#5C3DE5,#8B6DFF)", color:"#fff", border:"none",
+    padding:"14px 48px", borderRadius:12, cursor:"pointer", fontWeight:700, fontSize:15,
+    letterSpacing:0.3, boxShadow:"0 6px 24px rgba(92,61,229,0.35)", width:"100%",
+  },
+  connectNet:  { color:"#C0BFD4", fontSize:11, marginTop:20 },
   header: {
-    display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "14px 28px", borderBottom: "1px solid #f0ecff",
-    background: "#fff", boxShadow: "0 1px 8px rgba(108,71,255,0.06)",
+    display:"flex", justifyContent:"space-between", alignItems:"center",
+    padding:"0 32px", height:64, background:"#fff",
+    borderBottom:"1.5px solid #EBEBF0", position:"sticky", top:0, zIndex:100,
+    boxShadow:"0 2px 8px rgba(0,0,0,0.04)",
   },
-  tabBar: {
-    display: "flex", gap: 0, padding: "0 28px",
-    borderBottom: "2px solid #f0ecff", background: "#fff",
-  },
-  tabBtn: {
-    background: "none", border: "none", borderBottom: "3px solid transparent",
-    color: "#999", padding: "14px 20px", marginBottom: -2,
-    cursor: "pointer", fontSize: 14, fontWeight: 600,
-    transition: "all 0.15s",
-  },
-  tabActive: {
-    borderBottomColor: "#6C47FF", color: "#6C47FF",
+  logoMark2:   { fontSize:18, color:"#5C3DE5" },
+  brandName:   { fontWeight:800, fontSize:17, color:"#0F0A2E", letterSpacing:-0.5 },
+  chainBadge:  {
+    background:"#F4F2FF", color:"#7B7A8E",
+    fontSize:12, padding:"5px 12px", borderRadius:8, fontWeight:600,
   },
   walletBadge: {
-    background: "#f5f3ff", border: "1px solid #e0d9ff",
-    borderRadius: 50, padding: "6px 14px", display: "flex", alignItems: "center",
+    background:"#F8F8FC", border:"1.5px solid #EBEBF0",
+    borderRadius:10, padding:"7px 14px", display:"flex", alignItems:"center",
   },
-  content: { padding: "28px", maxWidth: 1100, margin: "0 auto" },
-  btn: {
-    border: "none", borderRadius: 50, color: "#fff",
-    padding: "10px 24px", cursor: "pointer", fontWeight: 700,
-    fontSize: 14, transition: "opacity 0.15s",
+  tabBar: {
+    display:"flex", gap:4, padding:"10px 28px",
+    background:"#fff", borderBottom:"1.5px solid #EBEBF0",
   },
+  tabBtn: {
+    background:"transparent", border:"none", color:"#9B9BAE",
+    padding:"8px 18px", borderRadius:8, cursor:"pointer", fontSize:14, fontWeight:600,
+    transition:"all 0.15s",
+  },
+  tabActive:   { background:"#EDE9FF", color:"#5C3DE5" },
+  content:     { padding:"32px", maxWidth:1100, margin:"0 auto" },
   errorBanner: {
-    background: "#fff0f0", border: "1px solid #ffd0d0", borderRadius: 10,
-    padding: "10px 20px", color: "#c0392b", margin: "12px 28px 0",
+    background:"#FFF1F0", border:"1px solid #FFCCC7", borderRadius:10,
+    padding:"10px 20px", color:"#CF1322", margin:"12px 32px 0",
   },
   successBanner: {
-    background: "#f0fff4", border: "1px solid #b7ebc4", borderRadius: 10,
-    padding: "10px 20px", color: "#27ae60", margin: "12px 28px 0",
+    background:"#F6FFED", border:"1px solid #B7EB8F", borderRadius:10,
+    padding:"10px 20px", color:"#389E0D", margin:"12px 32px 0",
   },
   infoBanner: {
-    background: "#f5f3ff", border: "1px solid #d5ccff", borderRadius: 10,
-    padding: "10px 20px", color: "#6C47FF", margin: "12px 28px 0",
+    background:"#EDE9FF", border:"1px solid #C9B8FF", borderRadius:10,
+    padding:"10px 20px", color:"#5C3DE5", margin:"12px 32px 0",
   },
 };

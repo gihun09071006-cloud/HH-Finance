@@ -4,8 +4,8 @@ import ADDRESSES from "../deployedAddresses.json";
 import { useLang } from "../i18n/LanguageContext.jsx";
 
 const STATE_COLOR = {
-  ENROLLING: "#6C47FF", POSITION_SELECTION: "#FF9500",
-  ACTIVE: "#30D158", COMPLETED: "#999", CANCELLED: "#FF453A",
+  ENROLLING:"#5C3DE5", POSITION_SELECTION:"#FF9F43",
+  ACTIVE:"#00C48C", COMPLETED:"#9B9BAE", CANCELLED:"#FF4757",
 };
 
 export default function DashboardTab({
@@ -14,7 +14,7 @@ export default function DashboardTab({
   autoMyGroups, customMyGroups, platformStats, fmt, short,
 }) {
   const { t } = useLang();
-  const [swapAmount, setSwapAmount]   = useState("");
+  const [swapAmount,   setSwapAmount]   = useState("");
   const [redeemAmount, setRedeemAmount] = useState("");
 
   const handleDeposit = async () => {
@@ -38,104 +38,99 @@ export default function DashboardTab({
     ...autoMyGroups.map(g => ({ ...g, type: t("tab_auto") })),
     ...customMyGroups.map(g => ({ ...g, type: t("tab_custom") })),
   ];
-
   const ps = platformStats || {};
 
   return (
     <div>
-      <div style={s.platformBanner}>
-        <div style={{ position:"absolute", top:18, right:60, width:14, height:14, borderRadius:"50%", background:"#FF9500", opacity:0.8 }} />
-        <div style={{ position:"absolute", top:36, right:90, width:9, height:9, borderRadius:"50%", background:"#FFD60A", opacity:0.7 }} />
-        <div style={{ position:"absolute", bottom:20, right:40, width:12, height:12, transform:"rotate(45deg)", background:"rgba(255,255,255,0.4)" }} />
-        <div style={{ position:"absolute", top:24, left:220, width:8, height:8, borderRadius:"50%", background:"rgba(255,255,255,0.5)" }} />
-
-        <div style={s.platformTitle}>{t("platform_status")}</div>
-        <div style={s.statsRow}>
-          <StatItem icon="👥" label={t("total_users")} value={(ps.totalUsers || 0).toLocaleString() + t("people")} color="#fff" />
-          <div style={s.statDivider} />
-          <StatItem icon="💰" label={t("total_pool")} value={(ps.totalPool || "0") + " HHUSD"} color="#FFD60A" sub={t("all_rooms_combined")} />
-          <div style={s.statDivider} />
-          <StatItem icon="🏠" label={t("total_rooms")} value={(ps.totalGroups || 0) + t("rooms_unit")} color="#fff" />
-          <div style={s.statDivider} />
-          <StatItem icon="⚡" label={t("active_rooms")} value={(ps.activeGroups || 0) + t("rooms_unit")} color="#30D158" sub="ACTIVE" />
+      {/* ── Premium stats banner ── */}
+      <div style={s.banner}>
+        <div style={s.bannerGlow} />
+        <div style={s.bannerLeft}>
+          <div style={s.eyebrow}>PLATFORM STATUS</div>
+          <div style={s.bigNum}>{ps.totalPool || "0"}</div>
+          <div style={s.bigLabel}>HHUSD · {t("total_pool")}</div>
+        </div>
+        <div style={s.sep} />
+        <div style={s.bannerRight}>
+          <BStat label={t("total_users")}  value={(ps.totalUsers  || 0) + t("people")} />
+          <BStat label={t("total_rooms")}  value={(ps.totalGroups || 0) + t("rooms_unit")} />
+          <BStat label={t("active_rooms")} value={(ps.activeGroups || 0) + t("rooms_unit")} green />
         </div>
       </div>
 
-      <div style={s.sectionTitle}>{t("my_assets")}</div>
-
-      <div style={s.cardRow}>
-        <Card title={t("hhusd_balance")} value={`${fmt(hhusdBal)} HHUSD`} color="#6C47FF" />
-        <Card title={t("locked_collateral")} value={`${fmt(lockedCol)} HHUSD`} color="#FF9500" sub={t("all_groups_combined")} />
-        <Card title={t("usdt_balance")} value={`${fmt(usdtBal)} USDT`} color="#30D158" />
-        <Card title={t("my_rooms_count")} value={allMyGroups.length + t("rooms_unit")} color="#9B72FF" />
+      {/* ── Assets ── */}
+      <SLabel>{t("my_assets")}</SLabel>
+      <div style={s.assetGrid}>
+        <ACard label={t("hhusd_balance")}     value={fmt(hhusdBal)}  unit="HHUSD"            color="#5C3DE5" primary />
+        <ACard label={t("locked_collateral")} value={fmt(lockedCol)} unit="HHUSD"            color="#FF9F43" sub={t("all_groups_combined")} />
+        <ACard label={t("usdt_balance")}      value={fmt(usdtBal)}   unit="USDT"             color="#00C48C" />
+        <ACard label={t("my_rooms_count")}    value={String(allMyGroups.length)} unit={t("rooms_unit")} color="#9B7AFF" />
       </div>
 
+      {/* ── Swap ── */}
       <div style={s.section}>
-        <div style={s.sectionTitle}>💱 USDT ↔ HHUSD</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <SLabel>USDT ↔ HHUSD</SLabel>
+        <div style={s.swapRow}>
           <div style={s.swapCard}>
-            <div style={{ color: "#6C47FF", fontWeight: 700, marginBottom: 8 }}>USDT → HHUSD</div>
-            <div style={{ color: "#999", fontSize: 12, marginBottom: 12 }}>보유 USDT: {fmt(usdtBal)}</div>
-            <input
-              type="number" min="1" placeholder="USDT 금액"
-              value={swapAmount}
-              onChange={e => setSwapAmount(e.target.value)}
-              style={s.input}
-            />
-            <button onClick={handleDeposit} disabled={loading || !swapAmount} style={s.depositBtn}>
+            <div style={s.swapHead}>
+              <span style={{ color:"#5C3DE5", fontWeight:700 }}>USDT</span>
+              <span style={{ color:"#C0BFD4", margin:"0 8px" }}>→</span>
+              <span style={{ color:"#5C3DE5", fontWeight:700 }}>HHUSD</span>
+              <span style={s.fee}>−2.5%</span>
+            </div>
+            <div style={s.bal}>보유 USDT: <b>{fmt(usdtBal)}</b></div>
+            <input type="number" min="1" placeholder="금액 입력"
+              value={swapAmount} onChange={e => setSwapAmount(e.target.value)} style={s.inp} />
+            <button onClick={handleDeposit} disabled={loading || !swapAmount} style={s.btnP}>
               {loading ? "처리 중..." : "발행 (Deposit)"}
             </button>
           </div>
           <div style={s.swapCard}>
-            <div style={{ color: "#FF9500", fontWeight: 700, marginBottom: 8 }}>HHUSD → USDT</div>
-            <div style={{ color: "#999", fontSize: 12, marginBottom: 12 }}>보유 HHUSD: {fmt(hhusdBal)}</div>
-            <input
-              type="number" min="1" placeholder="HHUSD 금액"
-              value={redeemAmount}
-              onChange={e => setRedeemAmount(e.target.value)}
-              style={s.input}
-            />
-            <button onClick={handleRedeem} disabled={loading || !redeemAmount} style={s.redeemBtn}>
+            <div style={s.swapHead}>
+              <span style={{ color:"#FF9F43", fontWeight:700 }}>HHUSD</span>
+              <span style={{ color:"#C0BFD4", margin:"0 8px" }}>→</span>
+              <span style={{ color:"#FF9F43", fontWeight:700 }}>USDT</span>
+              <span style={{ ...s.fee, background:"#FFF7ED", color:"#FF9F43" }}>−2.5%</span>
+            </div>
+            <div style={s.bal}>보유 HHUSD: <b>{fmt(hhusdBal)}</b></div>
+            <input type="number" min="1" placeholder="금액 입력"
+              value={redeemAmount} onChange={e => setRedeemAmount(e.target.value)} style={s.inp} />
+            <button onClick={handleRedeem} disabled={loading || !redeemAmount} style={s.btnO}>
               {loading ? "처리 중..." : "환급 (Redeem)"}
             </button>
           </div>
         </div>
-        <div style={{ color: "#bbb", fontSize: 11, marginTop: 8 }}>
-          * Deposit 수수료 2.5% / Redeem 수수료 2.5% (TreasuryV2)
-        </div>
       </div>
 
+      {/* ── Test mint ── */}
       <div style={s.section}>
-        <div style={s.sectionTitle}>🧪 {t("test_mint_title")}</div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button onClick={() => mintMockUSDT(1000)} disabled={loading} style={s.btn}>{t("mint_1000")}</button>
-          <button onClick={() => mintMockUSDT(5000)} disabled={loading} style={s.btn}>{t("mint_5000")}</button>
+        <SLabel>🧪 {t("test_mint_title")}</SLabel>
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={() => mintMockUSDT(1000)} disabled={loading} style={s.mintBtn}>{t("mint_1000")}</button>
+          <button onClick={() => mintMockUSDT(5000)} disabled={loading} style={s.mintBtn}>{t("mint_5000")}</button>
         </div>
-        <div style={{ color: "#bbb", fontSize: 12, marginTop: 8 }}>{t("test_mint_note")}</div>
+        <div style={{ color:"#C0BFD4", fontSize:12, marginTop:8 }}>{t("test_mint_note")}</div>
       </div>
 
+      {/* ── My rooms ── */}
       <div style={s.section}>
-        <div style={s.sectionTitle}>{t("my_rooms_section")}</div>
+        <SLabel>{t("my_rooms_section")}</SLabel>
         {allMyGroups.length === 0 ? (
           <div style={s.empty}>{t("no_rooms_yet")}</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {allMyGroups.map((g, i) => (
-              <div key={i} style={s.groupRow}>
-                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                  <span style={{ ...s.badge, background: "#f0ecff", color: "#6C47FF" }}>{g.type}</span>
-                  {g.tierLabel && <span style={{ color: "#555", fontSize: 13 }}>{g.tierLabel}</span>}
-                  {g.contributionAmount && (
-                    <span style={{ color: "#555", fontSize: 13 }}>{fmt(g.contributionAmount)} HHUSD</span>
-                  )}
-                  <span style={{ ...s.badge, background: "#fafafa", border: "1px solid #eee", color: STATE_COLOR[g.stateName] || "#aaa" }}>
-                    {g.stateName}
-                  </span>
+              <div key={i} style={s.roomRow}>
+                <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+                  <span style={s.typeTag}>{g.type}</span>
+                  {g.tierLabel && <span style={{ color:"#3D3B54", fontSize:13, fontWeight:600 }}>{g.tierLabel}</span>}
+                  {g.contributionAmount && <span style={{ color:"#3D3B54", fontSize:13, fontWeight:600 }}>{fmt(g.contributionAmount)} HHUSD</span>}
+                  <span style={{ fontSize:12, fontWeight:700, color: STATE_COLOR[g.stateName] || "#aaa" }}>{g.stateName}</span>
                 </div>
-                <div style={{ display: "flex", gap: 20, fontSize: 13, color: "#aaa" }}>
+                <div style={{ display:"flex", gap:16, fontSize:12, color:"#9B9BAE" }}>
                   <span>{t("join_order")} {g.joinOrder}{t("num_suffix")}</span>
                   {g.position > 0 && <span>📍 {t("position")} {g.position}{t("num_suffix")}</span>}
-                  <span style={{ color: "#ccc", fontSize: 11 }}>{short(g.groupAddr)}</span>
+                  <span style={{ fontFamily:"monospace", fontSize:11 }}>{short(g.groupAddr)}</span>
                 </div>
               </div>
             ))}
@@ -143,13 +138,14 @@ export default function DashboardTab({
         )}
       </div>
 
+      {/* ── Contracts ── */}
       <div style={s.section}>
-        <div style={s.sectionTitle}>📋 {t("contract_addresses")}</div>
-        <div style={s.addrGrid}>
+        <SLabel>컨트랙트 주소</SLabel>
+        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
           {Object.entries(ADDRESSES.contracts).map(([name, addr]) => (
             <div key={name} style={s.addrRow}>
-              <span style={{ color: "#999", fontSize: 12, minWidth: 160 }}>{name}</span>
-              <span style={{ color: "#6C47FF", fontSize: 12, fontFamily: "monospace" }}>{addr}</span>
+              <span style={{ color:"#9B9BAE", fontSize:12, minWidth:160 }}>{name}</span>
+              <span style={{ color:"#5C3DE5", fontSize:12, fontFamily:"monospace" }}>{addr}</span>
             </div>
           ))}
         </div>
@@ -158,81 +154,68 @@ export default function DashboardTab({
   );
 }
 
-function StatItem({ icon, label, value, color, sub }) {
+function SLabel({ children }) {
+  return <div style={{ fontSize:11, fontWeight:800, color:"#9B9BAE", marginBottom:14, letterSpacing:1.5, textTransform:"uppercase" }}>{children}</div>;
+}
+
+function BStat({ label, value, green }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1 }}>
-      <span style={{ fontSize: 26 }}>{icon}</span>
-      <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>{label}</span>
-      <span style={{ color: color || "#fff", fontSize: 22, fontWeight: 800 }}>{value}</span>
-      {sub && <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>{sub}</span>}
+    <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+      <span style={{ color:"rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1.2 }}>{label}</span>
+      <span style={{ color: green ? "#00C48C" : "rgba(255,255,255,0.88)", fontSize:19, fontWeight:800 }}>{value}</span>
     </div>
   );
 }
 
-function Card({ title, value, sub, color }) {
+function ACard({ label, value, unit, color, sub, primary }) {
   return (
-    <div style={{ ...s.card, borderTop: `3px solid ${color}` }}>
-      <div style={{ color: "#aaa", fontSize: 12, marginBottom: 8 }}>{title}</div>
-      <div style={{ color: color || "#1a1a2e", fontSize: 22, fontWeight: 800 }}>{value}</div>
-      {sub && <div style={{ color: "#bbb", fontSize: 11, marginTop: 4 }}>{sub}</div>}
+    <div style={{
+      background: primary ? `linear-gradient(140deg,${color}1A 0%,${color}08 100%)` : "#fff",
+      border:`1.5px solid ${primary ? color+"38" : "#EBEBF0"}`,
+      borderRadius:16, padding:"22px 24px",
+      boxShadow: primary ? `0 4px 20px ${color}1A` : "0 2px 8px rgba(0,0,0,0.04)",
+    }}>
+      <div style={{ color:"#9B9BAE", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.7, marginBottom:14 }}>{label}</div>
+      <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+        <span style={{ color, fontSize:26, fontWeight:800, letterSpacing:-1 }}>{value}</span>
+        <span style={{ color:color+"88", fontSize:13, fontWeight:700 }}>{unit}</span>
+      </div>
+      {sub && <div style={{ color:"#C0BFD4", fontSize:11, marginTop:8 }}>{sub}</div>}
     </div>
   );
 }
 
 const s = {
-  platformBanner: {
-    background: "linear-gradient(135deg, #6C47FF 0%, #9B72FF 60%, #7B5CF6 100%)",
-    borderRadius: 20, padding: "28px 36px", marginBottom: 28,
-    position: "relative", overflow: "hidden",
-    boxShadow: "0 8px 32px rgba(108,71,255,0.3)",
+  banner: {
+    background:"linear-gradient(155deg,#0C0622 0%,#1A0A4A 55%,#250E68 100%)",
+    borderRadius:20, padding:"36px 44px", marginBottom:36,
+    display:"flex", alignItems:"center",
+    position:"relative", overflow:"hidden",
+    boxShadow:"0 24px 64px rgba(12,6,34,0.35),0 0 0 1px rgba(255,255,255,0.04)",
   },
-  platformTitle: {
-    fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.75)",
-    marginBottom: 20, textTransform: "uppercase", letterSpacing: 1.5,
+  bannerGlow: {
+    position:"absolute", top:-60, right:-40, width:280, height:280, borderRadius:"50%",
+    background:"rgba(92,61,229,0.22)", filter:"blur(70px)", pointerEvents:"none",
   },
-  statsRow: { display: "flex", alignItems: "center", gap: 0 },
-  statDivider: { width: 1, height: 54, background: "rgba(255,255,255,0.2)", margin: "0 20px" },
-  cardRow: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 28 },
-  card: {
-    background: "#fff", borderRadius: 16, padding: "20px 22px",
-    boxShadow: "0 2px 16px rgba(108,71,255,0.08)",
-  },
-  section: { marginBottom: 28 },
-  sectionTitle: { fontSize: 15, fontWeight: 700, color: "#1a1a2e", marginBottom: 14 },
-  groupRow: {
-    background: "#fff", border: "1px solid #f0ecff", borderRadius: 14,
-    padding: "14px 18px", display: "flex", flexDirection: "column", gap: 8,
-    boxShadow: "0 2px 8px rgba(108,71,255,0.05)",
-  },
-  badge: { fontSize: 11, padding: "3px 10px", borderRadius: 20, fontWeight: 700 },
-  empty: { color: "#ccc", fontSize: 14, padding: "32px 0", textAlign: "center" },
-  btn: {
-    background: "#f0ecff", border: "none", color: "#6C47FF",
-    padding: "10px 22px", borderRadius: 50, cursor: "pointer", fontSize: 13, fontWeight: 700,
-  },
-  addrGrid: { display: "flex", flexDirection: "column", gap: 6 },
-  addrRow: {
-    display: "flex", gap: 16, padding: "8px 14px",
-    background: "#fff", borderRadius: 10, border: "1px solid #f0ecff",
-  },
-  swapCard: {
-    background: "#fff", border: "1px solid #f0ecff", borderRadius: 16,
-    padding: "20px 22px", display: "flex", flexDirection: "column", gap: 8,
-    boxShadow: "0 2px 16px rgba(108,71,255,0.06)",
-  },
-  input: {
-    background: "#fafafa", border: "1.5px solid #e0d9ff", color: "#1a1a2e",
-    padding: "10px 14px", borderRadius: 12, fontSize: 14, width: "100%",
-    boxSizing: "border-box", outline: "none",
-  },
-  depositBtn: {
-    background: "linear-gradient(135deg,#6C47FF,#9B72FF)", color: "#fff", border: "none",
-    padding: "11px", borderRadius: 50, cursor: "pointer", fontWeight: 700,
-    fontSize: 14, marginTop: 4, boxShadow: "0 2px 12px rgba(108,71,255,0.25)",
-  },
-  redeemBtn: {
-    background: "linear-gradient(135deg,#FF9500,#FFB340)", color: "#fff", border: "none",
-    padding: "11px", borderRadius: 50, cursor: "pointer", fontWeight: 700,
-    fontSize: 14, marginTop: 4, boxShadow: "0 2px 12px rgba(255,149,0,0.25)",
-  },
+  bannerLeft:  { flex:1, position:"relative" },
+  eyebrow:     { fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.32)", letterSpacing:2.5, marginBottom:14, textTransform:"uppercase" },
+  bigNum:      { fontSize:54, fontWeight:900, color:"#F2C94C", letterSpacing:-2.5, lineHeight:1, marginBottom:10 },
+  bigLabel:    { color:"rgba(255,255,255,0.38)", fontSize:13 },
+  sep:         { width:1, height:90, background:"rgba(255,255,255,0.08)", margin:"0 52px", flexShrink:0 },
+  bannerRight: { display:"flex", flexDirection:"column", gap:22, position:"relative" },
+  assetGrid:   { display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:36 },
+  section:     { marginBottom:32 },
+  swapRow:     { display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 },
+  swapCard:    { background:"#fff", border:"1.5px solid #EBEBF0", borderRadius:16, padding:"24px", display:"flex", flexDirection:"column", gap:12, boxShadow:"0 2px 12px rgba(0,0,0,0.04)" },
+  swapHead:    { display:"flex", alignItems:"center", fontSize:15 },
+  fee:         { marginLeft:"auto", background:"#EDE9FF", color:"#5C3DE5", fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6 },
+  bal:         { color:"#9B9BAE", fontSize:12 },
+  inp:         { background:"#F8F7FF", border:"1.5px solid #E8E4FF", color:"#0F0A2E", padding:"13px 16px", borderRadius:10, fontSize:15, outline:"none", width:"100%", boxSizing:"border-box" },
+  btnP:        { background:"linear-gradient(135deg,#5C3DE5,#8B6DFF)", color:"#fff", border:"none", padding:"13px", borderRadius:10, cursor:"pointer", fontWeight:700, fontSize:14, boxShadow:"0 4px 16px rgba(92,61,229,0.3)" },
+  btnO:        { background:"linear-gradient(135deg,#FF9F43,#FFBE76)", color:"#fff", border:"none", padding:"13px", borderRadius:10, cursor:"pointer", fontWeight:700, fontSize:14, boxShadow:"0 4px 16px rgba(255,159,67,0.3)" },
+  mintBtn:     { background:"#F0EBFF", border:"none", color:"#5C3DE5", padding:"10px 22px", borderRadius:10, cursor:"pointer", fontSize:13, fontWeight:700 },
+  roomRow:     { background:"#fff", border:"1.5px solid #EBEBF0", borderRadius:12, padding:"14px 18px", display:"flex", flexDirection:"column", gap:8 },
+  typeTag:     { background:"#EDE9FF", color:"#5C3DE5", fontSize:11, padding:"3px 10px", borderRadius:6, fontWeight:700 },
+  addrRow:     { display:"flex", gap:16, padding:"10px 16px", background:"#fff", borderRadius:10, border:"1.5px solid #EBEBF0" },
+  empty:       { color:"#C0BFD4", fontSize:14, padding:"32px 0", textAlign:"center" },
 };
